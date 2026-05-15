@@ -27,7 +27,13 @@ class GameEngine {
     val matchResult = _matchResult.asStateFlow()
 
     fun setupGame(players: List<Player>, targetScore: Int) {
-        _players.value = players
+        _players.value = players.map { player ->
+            if (player.headStart > 0) {
+                player.copy(score = player.headStart)
+            } else {
+                player
+            }
+        }
         _breakHistory.value = emptyList()
         _tableState.value = TableState()
         _targetScore.value = targetScore
