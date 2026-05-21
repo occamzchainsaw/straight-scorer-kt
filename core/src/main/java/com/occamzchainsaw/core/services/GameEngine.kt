@@ -12,11 +12,12 @@ import kotlinx.coroutines.flow.update
 import kotlin.collections.emptyList
 
 class GameEngine {
-    private val _players = MutableStateFlow<List<Player>>(emptyList<Player>())
-    private val _breakHistory = MutableStateFlow<List<Break>>(emptyList<Break>())
-    private val _tableState = MutableStateFlow<TableState>(TableState())
+    private val _players = MutableStateFlow<List<Player>>(emptyList())
+    private val _breakHistory = MutableStateFlow<List<Break>>(emptyList())
+    private val _tableState = MutableStateFlow(TableState())
     private val _targetScore = MutableStateFlow(100)
     private val _matchResult = MutableStateFlow(MatchResult())
+    private val _matchIsInProgress = MutableStateFlow(false)
 
     private var _breakOffTaken = false
     private var _gameFinished = false
@@ -25,6 +26,7 @@ class GameEngine {
     var breakHistory = _breakHistory.asStateFlow()
     val targetScore = _targetScore.asStateFlow()
     val matchResult = _matchResult.asStateFlow()
+    val matchIsInProgress = _matchIsInProgress.asStateFlow()
 
     fun setupGame(players: List<Player>, targetScore: Int) {
         _players.value = players.map { player ->
@@ -39,6 +41,10 @@ class GameEngine {
         _targetScore.value = targetScore
         _breakOffTaken = false
         _gameFinished = false
+    }
+
+    fun startGame() {
+        _matchIsInProgress.value = true
     }
 
     fun addPoints(points: Int = 1) {
