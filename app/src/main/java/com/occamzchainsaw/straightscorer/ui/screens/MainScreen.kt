@@ -23,6 +23,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,7 +56,7 @@ fun SetupContent(
     onStartClicked: (List<Player>, Int) -> Unit
 ) {
     var players = remember {
-        mutableListOf(
+        mutableStateListOf(
             PlayerSetupItem(isStarting = true),
             PlayerSetupItem()
         )
@@ -93,10 +94,12 @@ fun SetupContent(
 
                 SwipeToDismissBox(
                     state = dismissState,
-                    enableDismissFromEndToStart = false,
+                    enableDismissFromStartToEnd = false,
                     onDismiss = { dismissDirection ->
                         if (dismissDirection == SwipeToDismissBoxValue.EndToStart) {
                             players.remove(player)
+                            if (players.none { it.isStarting })
+                                players[0] = players[0].copy(isStarting = true)
                         }
                     },
                     backgroundContent = { SwipeBackground() }
@@ -136,7 +139,7 @@ fun SetupContent(
                                 isStarting = it.isStarting
                             )
                         },
-                        targetScoreText.toInt()
+                        targetScoreText.toIntOrNull() ?: 100
                     ) },
                 enabled = players.isNotEmpty()
             ) {
@@ -153,45 +156,54 @@ fun GameContent(viewModel: GameViewModel) {
     val targetScore by viewModel.targetScore.collectAsState()
     val matchResult by viewModel.matchResult.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column (modifier = Modifier.fillMaxWidth()) {
-            Row {
-                Card(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                    Column(modifier = Modifier.padding(8.dp).align(Alignment.Start)) {
-                        Text(players[0].name, modifier = Modifier.align(Alignment.Start))
-                        Text("${players[0].score}", modifier = Modifier.align(Alignment.Start))
+    if (players.size >= 2) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row {
+                    Card(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Column(modifier = Modifier.padding(8.dp).align(Alignment.Start)) {
+                            Text(players[0].name, modifier = Modifier.align(Alignment.Start))
+                            Text("${players[0].score}", modifier = Modifier.align(Alignment.Start))
+                        }
+                    }
+
+                    Card(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                        Column(modifier = Modifier.padding(8.dp).align(Alignment.End)) {
+                            Text(players[1].name, modifier = Modifier.align(Alignment.End))
+                            Text("${players[1].score}", modifier = Modifier.align(Alignment.End))
+                        }
                     }
                 }
 
-                Card(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                    Column(modifier = Modifier.padding(8.dp).align(Alignment.End)) {
-                        Text(players[1].name, modifier = Modifier.align(Alignment.End))
-                        Text("${players[1].score}", modifier = Modifier.align(Alignment.End))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card {
+                    Column(modifier = Modifier.padding(0.dp, 2.dp).fillMaxWidth()) {
+                        Text(
+                            "Current Break",
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+                    Row(modifier = Modifier.padding(8.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(players.first { it.isAtTable }.name)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "${players.first { it.isStarting }.currentBreak}",
+                                modifier = Modifier.align(Alignment.End)
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card {
-                Column (modifier = Modifier.padding(0.dp, 2.dp).fillMaxWidth()) {
-                    Text("Current Break", modifier = Modifier.align(Alignment.CenterHorizontally))
-                }
-                Row (modifier = Modifier.padding(8.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(players.first { it.isAtTable }.name)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("${players.first { it.isStarting }.currentBreak}",
-                            modifier = Modifier.align(Alignment.End))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
+    } else {
+        Text("Loading...")
     }
 }

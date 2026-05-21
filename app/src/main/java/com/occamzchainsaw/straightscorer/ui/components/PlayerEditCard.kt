@@ -50,7 +50,7 @@ fun PlayerEditCard(
                             onItemUpdated(item.copy(headStart = it))
                         }
                     },
-                    label = { Text("Target Score") },
+                    label = { Text("Head Start") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Spacer(modifier = Modifier.width(16.dp))

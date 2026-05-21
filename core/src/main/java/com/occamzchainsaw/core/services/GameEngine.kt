@@ -31,9 +31,11 @@ class GameEngine {
     fun setupGame(players: List<Player>, targetScore: Int) {
         _players.value = players.map { player ->
             if (player.headStart > 0) {
-                player.copy(score = player.headStart)
+                player.copy(
+                    score = player.headStart,
+                    isAtTable = player.isStarting)
             } else {
-                player
+                player.copy(isAtTable = player.isStarting)
             }
         }
         _breakHistory.value = emptyList()
