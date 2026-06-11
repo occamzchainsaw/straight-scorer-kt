@@ -74,8 +74,7 @@ class GameEngine {
                     } else {
                         player.copy(
                             score = newScore,
-                            currentBreak = newBreak,
-                            consecutiveFouls = 0
+                            currentBreak = newBreak
                         )
                     }
                 } else {
@@ -242,21 +241,20 @@ class GameEngine {
                 when (index) {
                     activeIndex -> {
                         var newConsecutiveFouls = player.consecutiveFouls + 1
-                        var penaltyPoints = 0
+                        var newBreak = player.currentBreak
 
                         if (newConsecutiveFouls == 3) {
-                            penaltyPoints = 16
+                            newBreak -= 16
                             newConsecutiveFouls = 0
                             isThirdFoul = true
                         }
                         else if (player.isStarting && !_breakOffTaken) {
-                            penaltyPoints = 2
+                            newBreak -= 2
                         }
                         else {
-                            penaltyPoints = 1
+                            newBreak -= 1
                         }
 
-                        var newBreak = player.currentBreak - penaltyPoints
                         newHistoricalBreak = Break(
                             player = player,
                             pointsScored = newBreak,
@@ -267,7 +265,7 @@ class GameEngine {
                         val newBreakSum = player.breakSum + newBreak
 
                         player.copy(
-                            score = player.score - penaltyPoints,
+                            score = player.score + newBreak,
                             consecutiveFouls = newConsecutiveFouls,
                             totalFouls = player.totalFouls + 1,
                             breakCount = newBreakCount,

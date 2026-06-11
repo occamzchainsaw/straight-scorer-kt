@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun SettingsScreen() {
+fun settingsScreen() {
     Column(modifier = Modifier.fillMaxSize()) {
         Text("Settings Screen")
     }

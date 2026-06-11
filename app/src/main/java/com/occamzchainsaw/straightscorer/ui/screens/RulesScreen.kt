@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun RulesScreen() {
+fun rulesScreen() {
     Column(modifier = Modifier.fillMaxSize()) {
         Text("Rules Screen")
     }

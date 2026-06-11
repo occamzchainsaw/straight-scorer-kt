@@ -10,6 +10,7 @@ class GameViewModel : ViewModel() {
     val isMatchActive = engine.matchIsInProgress
     val players = engine.players
     val breakHistory = engine.breakHistory
+    val tableState = engine.tableState
     val targetScore = engine.targetScore
     val matchResult = engine.matchResult
 
