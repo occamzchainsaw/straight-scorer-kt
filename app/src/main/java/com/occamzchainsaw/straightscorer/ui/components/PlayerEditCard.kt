@@ -38,14 +38,13 @@ fun playerEditCard(
     item: PlayerSetupItem,
     onItemUpdated: (PlayerSetupItem) -> Unit,
     onDelete: (() -> Unit)? = null,
-    showErrors: Boolean = false,
+    nameError: String? = null,
+    headStartError: String? = null,
     modifier: Modifier = Modifier
 ) {
     var headStartValue by remember {
         mutableStateOf(TextFieldValue(item.headStart))
     }
-
-    val nameIsError = showErrors && item.name.isBlank()
 
     OutlinedCard(
         modifier = modifier.fillMaxWidth()
@@ -57,10 +56,8 @@ fun playerEditCard(
                     value = item.name,
                     onValueChange = { onItemUpdated(item.copy(name = it)) },
                     label = { Text("Name") },
-                    isError = nameIsError,
-                    supportingText = if (nameIsError) {
-                        { Text("Name required") }
-                    } else null,
+                    isError = nameError != null,
+                    supportingText = nameError?.let { error -> { Text(error) } },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                     singleLine = true
                 )
@@ -97,6 +94,8 @@ fun playerEditCard(
                         }
                     },
                     label = { Text("Head Start") },
+                    isError = headStartError != null,
+                    supportingText = headStartError?.let { error -> { Text(error) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )

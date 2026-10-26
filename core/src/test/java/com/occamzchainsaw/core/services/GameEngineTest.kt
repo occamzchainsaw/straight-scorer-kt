@@ -1,118 +1,174 @@
 package com.occamzchainsaw.core.services
 
-import com.occamzchainsaw.core.models.Break
-import com.occamzchainsaw.core.models.BreakEndAction
-import com.occamzchainsaw.core.models.Player
-import org.junit.Assert.*
+import com.occamzchainsaw.core.models.GameSettings
+import com.occamzchainsaw.core.models.GameStatus
+import com.occamzchainsaw.core.models.MatchSetup
+import com.occamzchainsaw.core.models.PlayerSetup
+import com.occamzchainsaw.core.rules.toMatchResult
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class GameEngineTest {
+    private var settings = GameSettings()
     private lateinit var engine: GameEngine
+
+    private val setup = MatchSetup(
+        players = listOf(PlayerSetup(" Alice "), PlayerSetup("Bob", headStart = 20)),
+        targetScore = 50,
+        startingPlayerIndex = 1
+    )
 
     @Before
     fun setUp() {
-        engine = GameEngine()
+        engine = GameEngine(settings = { settings }, clock = { 1000L })
     }
 
     @Test
-    fun setupGame() {
-        val player1 = Player(name = "player1", isStarting = true, isAtTable = true,)
-        val player2 = Player(name = "player2")
-        val players = listOf(player1, player2)
-
-        engine.setupGame(players, targetScore = 50)
-
-        val statePlayers = engine.players.value
-        assertEquals(2, statePlayers.size)
-        assertEquals(50, engine.targetScore.value)
-        assertTrue("Player 1 is at the table", statePlayers[0].isAtTable)
-        assertTrue("Player 1 is starting", statePlayers[0].isStarting)
-    }
-
-    @Test
-    fun addPoints() {
-        val player1 = Player(name = "player1", isStarting = true, isAtTable = true, score = 10)
-        val player2 = Player(name = "player2")
-        val players = listOf(player1, player2)
-        engine.setupGame(players, targetScore = 100)
-
+    fun noGame_untilStarted() {
+        assertNull(engine.state.value)
         engine.addPoints()
-
-        val updatedActivePlayer = engine.players.value.first { it.isAtTable }
-        assertEquals("Score should be incremented by 1", 11, updatedActivePlayer.score)
-        assertEquals("Break should increment by 1", 1, updatedActivePlayer.currentBreak)
+        assertNull(engine.state.value)
     }
 
     @Test
-    fun handleMiss() {
-        val player1 = Player(name = "player1", isStarting = true, isAtTable = true, score = 10)
-        val player2 = Player(name = "player2")
-        val players = listOf(player1, player2)
-        engine.setupGame(players, targetScore = 100)
+    fun startGame_createsPlayersFromSetup() {
+        engine.startGame(setup)
 
-        engine.handleMiss()
-
-        val updatedPlayer1 = engine.players.value[0]
-        val updatedPlayer2 = engine.players.value[1]
-        val breakHistory = engine.breakHistory.value
-        val expectedBreak = Break(
-            player = player1,
-            pointsScored = 0,
-            breakEndAction = BreakEndAction.Miss
-        )
-        assertEquals("Break count should be incremented by 1", 1, updatedPlayer1.breakCount)
-        assertEquals("Current break should be reset to 0", 0, updatedPlayer1.currentBreak)
-        assertEquals("Player2 should be at the table now", true, updatedPlayer2.isAtTable)
-        assertEquals("Last historical break should be by Player1, 0 points, ended with a Miss", expectedBreak, breakHistory.last())
+        val state = engine.state.value!!
+        assertEquals(listOf("Alice", "Bob"), state.players.map { it.name })
+        assertEquals(listOf(0, 1), state.players.map { it.id })
+        assertEquals(20, state.players[1].score)
+        assertEquals(1, state.atTableIndex)
+        assertEquals(50, state.targetScore)
+        assertEquals(1000L, state.startedAt)
+        assertTrue(state.table.isOpeningBreak)
+        assertFalse(engine.canUndo.value)
     }
 
     @Test
-    fun handleSafe() {
-        val player1 = Player(name = "player1", isStarting = true, isAtTable = true, currentBreak = 12)
-        val player2 = Player(name = "player2")
-        val players = listOf(player1, player2)
-        engine.setupGame(players, targetScore = 100)
-
-        engine.handleSafe()
-
-        val updatedPlayer1 = engine.players.value[0]
-        val updatedPlayer2 = engine.players.value[1]
-        val breakHistory = engine.breakHistory.value
-        val expectedBreak = Break(
-            player = player1,
-            pointsScored = 12,
-            breakEndAction = BreakEndAction.Safe
-        )
-        assertEquals("Break count should be incremented by 1", 1, updatedPlayer1.breakCount)
-        assertEquals("Current break should be reset to 0", 0, updatedPlayer1.currentBreak)
-        assertEquals("Player2 should be at the table now", true, updatedPlayer2.isAtTable)
-        assertEquals("Last historical break should be by Player1, 12 points, ended with a Safe", expectedBreak, breakHistory.last())
+    fun startGame_rejectsInvalidSetup() {
+        assertThrows(IllegalArgumentException::class.java) {
+            engine.startGame(setup.copy(targetScore = 5))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            engine.startGame(setup.copy(players = listOf(PlayerSetup("A", headStart = 50))))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            engine.startGame(setup.copy(startingPlayerIndex = 2))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            engine.startGame(setup.copy(players = listOf(PlayerSetup("Bob"), PlayerSetup(" bob"))))
+        }
     }
 
     @Test
-    fun handleFoul() {
-        val player1 = Player(name = "player1", isStarting = true, isAtTable = true)
-        val player2 = Player(name = "player2")
-        val players = listOf(player1, player2)
-        engine.setupGame(players, targetScore = 100)
+    fun restore_onlyWhenNoGameIsRunning() {
+        engine.startGame(setup)
+        val saved = engine.state.value!!
+        engine.miss()
 
-        engine.handleFoul()
-
-        val updatedPlayer1 = engine.players.value[0]
-        val updatedPlayer2 = engine.players.value[1]
-        val breakHistory = engine.breakHistory.value
-        val expectedBreak = Break(
-            player = player1,
-            pointsScored = -2,
-            breakEndAction = BreakEndAction.Foul
-        )
-        assertEquals("Break count should be incremented by 1", 1, updatedPlayer1.breakCount)
-        assertEquals("Current break should be reset to 0", 0, updatedPlayer1.currentBreak)
-        assertEquals("Player 1's total fouls should be incremented by 1", 1, updatedPlayer1.totalFouls)
-        assertEquals("Player 1's consecutive fouls should be incremented by 1", 1, updatedPlayer1.consecutiveFouls)
-        assertEquals("Player2 should be at the table now", true, updatedPlayer2.isAtTable)
-        assertEquals("Last historical break should be by Player1, -2 points, ended with a Foul (on break)", expectedBreak, breakHistory.last())
+        assertFalse(engine.restore(saved))
+        engine.clear()
+        assertTrue(engine.restore(saved))
+        assertEquals(saved, engine.state.value)
+        assertFalse(engine.canUndo.value)
     }
 
+    @Test
+    fun undo_revertsActionsInOrder() {
+        engine.startGame(setup)
+        val initial = engine.state.value
+        engine.addPoints(3)
+        val afterPoints = engine.state.value
+        engine.foul()
+
+        engine.undo()
+        assertEquals(afterPoints, engine.state.value)
+        engine.undo()
+        assertEquals(initial, engine.state.value)
+        assertFalse(engine.canUndo.value)
+    }
+
+    @Test
+    fun undo_reopensFinishedGame() {
+        engine.startGame(setup)
+        engine.addPoints(30)
+        assertEquals(GameStatus.Finished(winnerId = 1), engine.state.value!!.status)
+
+        engine.undo()
+        assertEquals(GameStatus.InProgress, engine.state.value!!.status)
+    }
+
+    @Test
+    fun ignoredActions_doNotCreateUndoSteps() {
+        engine.startGame(setup)
+        engine.miss()
+        engine.breakingFoul(reBreak = false) // not on the opening break any more
+        engine.undo()
+
+        assertFalse(engine.canUndo.value)
+    }
+
+    @Test
+    fun undoHistory_isCapped() {
+        engine = GameEngine(clock = { 0L }, maxUndoSteps = 3)
+        engine.startGame(setup)
+        repeat(5) { engine.miss() }
+        repeat(3) { engine.undo() }
+
+        assertFalse(engine.canUndo.value)
+        assertEquals(2, engine.state.value!!.breaks.size)
+    }
+
+    @Test
+    fun startingNewGame_clearsUndoHistory() {
+        engine.startGame(setup)
+        engine.miss()
+        engine.startGame(setup)
+
+        assertFalse(engine.canUndo.value)
+        assertTrue(engine.state.value!!.breaks.isEmpty())
+    }
+
+    @Test
+    fun settings_areReadOnEveryAction() {
+        engine.startGame(setup)
+        settings = GameSettings(countMissesInAverage = false)
+        engine.miss()
+
+        assertEquals(0, engine.state.value!!.players[1].breakCount)
+    }
+
+    @Test
+    fun clear_removesGame() {
+        engine.startGame(setup)
+        engine.miss()
+        engine.clear()
+
+        assertNull(engine.state.value)
+        assertFalse(engine.canUndo.value)
+    }
+
+    @Test
+    fun finishedGame_mapsToMatchResult() {
+        engine.startGame(setup)
+        assertNull(engine.state.value!!.toMatchResult())
+
+        engine.addPoints(30)
+        val result = engine.state.value!!.toMatchResult()
+
+        assertNotNull(result)
+        assertEquals("Bob", result!!.winner?.name)
+        assertEquals(50, result.players[1].finalScore)
+        assertEquals(20, result.players[1].headStart)
+        assertEquals(30, result.players[1].highestBreak)
+        assertEquals(3, result.racks)
+        assertEquals(1, result.breaks.size)
+    }
 }

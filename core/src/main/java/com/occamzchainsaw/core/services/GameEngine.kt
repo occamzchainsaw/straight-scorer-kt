@@ -1,306 +1,98 @@
 package com.occamzchainsaw.core.services
 
-import com.occamzchainsaw.core.models.Break
-import com.occamzchainsaw.core.models.BreakEndAction
-import com.occamzchainsaw.core.models.MatchResult
+import com.occamzchainsaw.core.models.GameAction
+import com.occamzchainsaw.core.models.GameSettings
+import com.occamzchainsaw.core.models.GameState
+import com.occamzchainsaw.core.models.MatchSetup
 import com.occamzchainsaw.core.models.Player
-import com.occamzchainsaw.core.models.PlayerMatchSummary
-import com.occamzchainsaw.core.models.TableState
+import com.occamzchainsaw.core.rules.GameReducer
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlin.collections.emptyList
 
-class GameEngine {
-    private val _players = MutableStateFlow<List<Player>>(emptyList())
-    private val _breakHistory = MutableStateFlow<List<Break>>(emptyList())
-    private val _tableState = MutableStateFlow(TableState())
-    private val _targetScore = MutableStateFlow(100)
-    private val _matchResult = MutableStateFlow(MatchResult())
-    private val _matchIsInProgress = MutableStateFlow(false)
+/**
+ * Holds the current game and its undo history. All rules live in [GameReducer];
+ * undo works by keeping snapshots of previous states.
+ */
+class GameEngine(
+    private val settings: () -> GameSettings = { GameSettings() },
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val maxUndoSteps: Int = 100
+) {
+    private val lock = Any()
+    private val undoStack = ArrayDeque<GameState>()
 
-    private var _breakOffTaken = false
-    private var _gameFinished = false
+    private val _state = MutableStateFlow<GameState?>(null)
+    private val _canUndo = MutableStateFlow(false)
 
-    val players = _players.asStateFlow()
-    var breakHistory = _breakHistory.asStateFlow()
-    val tableState = _tableState.asStateFlow()
-    val targetScore = _targetScore.asStateFlow()
-    val matchResult = _matchResult.asStateFlow()
-    val matchIsInProgress = _matchIsInProgress.asStateFlow()
+    /** Current game, or null when no game has been started (or it was abandoned). */
+    val state: StateFlow<GameState?> = _state.asStateFlow()
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
 
-    fun setupGame(players: List<Player>, targetScore: Int) {
-        _players.value = players.map { player ->
-            if (player.headStart > 0) {
-                player.copy(
-                    score = player.headStart,
-                    isAtTable = player.isStarting)
-            } else {
-                player.copy(isAtTable = player.isStarting)
-            }
-        }
-        _breakHistory.value = emptyList()
-        _tableState.value = TableState()
-        _targetScore.value = targetScore
-        _breakOffTaken = false
-        _gameFinished = false
-    }
+    fun startGame(setup: MatchSetup) {
+        val errors = setup.validate()
+        require(errors.isEmpty()) { "Invalid match setup: $errors" }
 
-    fun startGame() {
-        _matchIsInProgress.value = true
-    }
-
-    fun addPoints(points: Int = 1) {
-        if (_gameFinished) return
-
-        var newBreak = 0
-        _players.update { currentList ->
-            currentList.map { player ->
-                if (player.isAtTable) {
-                    val newScore = player.score + points
-                    newBreak = player.currentBreak + points
-
-                    if (newScore >= _targetScore.value) {
-                        _gameFinished = true
-
-                        val newBreakCount = player.breakCount + 1
-                        val newBreakSum = player.breakSum + newBreak
-                        player.copy(
-                            score = newScore,
-                            currentBreak = newBreak,
-                            averageBreak = newBreakSum.toFloat() / newBreakCount.toFloat(),
-                            highestBreak = maxOf(player.highestBreak, newBreak)
-                        )
-                    } else {
-                        player.copy(
-                            score = newScore,
-                            currentBreak = newBreak,
-                            consecutiveFouls = 0
-                        )
-                    }
-                } else {
-                    player
-                }
-            }
-        }
-
-        _tableState.update { currentState ->
-            val ballsRemaining = currentState.ballsOnTable - 1
-
-            if (ballsRemaining == 1) {
-                currentState.copy(
-                    ballsOnTable = 15,
-                    rackNumber = currentState.rackNumber + 1
-                )
-            } else {
-                currentState.copy(
-                    ballsOnTable = ballsRemaining
-                )
-            }
-        }
-
-        if (_gameFinished) {
-            _breakHistory.update { currentList ->
-                currentList + Break(
-                    player = _players.value.first { it.isAtTable },
-                    pointsScored = newBreak,
-                    breakEndAction = BreakEndAction.Win
-                )
-            }
-
-            val playerSummaries = _players.value.map { player ->
-                PlayerMatchSummary(
-                    name = player.name,
-                    isWinner = player.isAtTable,
-                    score = player.score,
-                    highestBreak = player.highestBreak,
-                    averageBreak = player.averageBreak,
-                    totalFouls = player.totalFouls,
-                )
-            }
-            _matchResult.value = MatchResult(
-                date = System.currentTimeMillis(),
-                winner = playerSummaries.firstOrNull { it.isWinner },
-                players = playerSummaries
+        replaceState(
+            GameState(
+                players = setup.players.mapIndexed { index, player ->
+                    Player(id = index, name = player.name.trim(), headStart = player.headStart)
+                },
+                atTableIndex = setup.startingPlayerIndex,
+                targetScore = setup.targetScore,
+                startedAt = clock()
             )
+        )
+    }
+
+    /**
+     * Restores a previously saved game (e.g. after process death), unless a game has been started in the meantime.
+     * Undo history is not restored. Returns true if the game was restored.
+     */
+    fun restore(state: GameState): Boolean {
+        synchronized(lock) {
+            if (_state.value != null) return false
+            replaceState(state)
+            return true
         }
     }
 
-    fun handleMiss() {
-        if (_gameFinished) return
+    /** Ends the current game without a result. */
+    fun clear() = replaceState(null)
 
-        var newHistoricalBreak = Break()
-        _players.update { currentList ->
-            _breakOffTaken = true
-            val activeIndex = currentList.indexOfFirst { it.isAtTable }
-            if (activeIndex == -1) return@update currentList
+    fun dispatch(action: GameAction) {
+        synchronized(lock) {
+            val current = _state.value ?: return
+            val next = GameReducer.reduce(current, action, settings(), clock())
+            if (next == current) return
 
-            val nextIndex = (activeIndex + 1) % currentList.size
-            currentList.mapIndexed { index, player ->
-                when (index) {
-                    activeIndex -> {
-                        val newBreakCount = player.breakCount + 1
-                        val newBreakSum = player.breakSum + player.currentBreak
-                        newHistoricalBreak = Break(
-                            player = player,
-                            pointsScored = player.currentBreak,
-                            breakEndAction = BreakEndAction.Miss
-                        )
-
-                        player.copy(
-                            breakCount = newBreakCount,
-                            breakSum = newBreakSum,
-                            averageBreak = newBreakSum.toFloat() / newBreakCount.toFloat(),
-                            highestBreak = maxOf(player.highestBreak, player.currentBreak),
-                            currentBreak = 0,
-                            consecutiveFouls = 0,
-                            isAtTable = false
-                        )
-                    }
-                    nextIndex -> {
-                        player.copy(isAtTable = true)
-                    }
-                    else -> {
-                        player
-                    }
-                }
-            }
+            undoStack.addLast(current)
+            if (undoStack.size > maxUndoSteps) undoStack.removeFirst()
+            _state.value = next
+            _canUndo.value = true
         }
-
-        _breakHistory.update { currentHistory ->
-            currentHistory + newHistoricalBreak
-        }
-
-        _breakOffTaken = true
     }
 
-    fun handleSafe() {
-        if (_gameFinished) return
+    fun addPoints(points: Int = 1) = dispatch(GameAction.AddPoints(points))
+    fun miss() = dispatch(GameAction.Miss)
+    fun safe() = dispatch(GameAction.Safe)
+    fun foul() = dispatch(GameAction.Foul)
+    fun breakingFoul(reBreak: Boolean) = dispatch(GameAction.BreakingFoul(reBreak))
 
-        var newHistoricalBreak = Break()
-        _players.update { currentList ->
-            val activeIndex = currentList.indexOfFirst { it.isAtTable }
-            if (activeIndex == -1) return@update currentList
-
-            val nextIndex = (activeIndex + 1) % currentList.size
-
-            currentList.mapIndexed { index, player ->
-                when (index) {
-                    activeIndex -> {
-                        var newBreakCount = player.breakCount
-                        var newBreakSum = player.breakSum
-
-                        if (player.currentBreak > 0) {
-                            newBreakCount++
-                            newBreakSum += player.currentBreak
-                            newHistoricalBreak = Break(
-                                player = player,
-                                pointsScored = player.currentBreak,
-                                breakEndAction = BreakEndAction.Safe
-                            )
-                        }
-
-                        player.copy(
-                            breakCount = newBreakCount,
-                            breakSum = newBreakSum,
-                            averageBreak = newBreakSum.toFloat() / newBreakCount.toFloat(),
-                            highestBreak = maxOf(player.highestBreak, player.currentBreak),
-                            currentBreak = 0,
-                            consecutiveFouls = 0,
-                            isAtTable = false
-                        )
-                    }
-                    nextIndex -> {
-                        player.copy(isAtTable = true)
-                    }
-                    else -> {
-                        player
-                    }
-                }
-            }
+    /** Reverts the last action, including the one that won the game. */
+    fun undo() {
+        synchronized(lock) {
+            val previous = undoStack.removeLastOrNull() ?: return
+            _state.value = previous
+            _canUndo.value = undoStack.isNotEmpty()
         }
-
-        _breakHistory.update { currentList ->
-            currentList + newHistoricalBreak
-        }
-
-        _breakOffTaken = true
     }
 
-    fun handleFoul() {
-        if (_gameFinished) return
-
-        var isThirdFoul = false
-        var newHistoricalBreak = Break()
-        _players.update { currentList ->
-            val activeIndex = currentList.indexOfFirst { it.isAtTable }
-            if (activeIndex == -1) return@update currentList
-
-            val nextIndex = (activeIndex + 1) % currentList.size
-
-            currentList.mapIndexed { index, player ->
-                when (index) {
-                    activeIndex -> {
-                        var newConsecutiveFouls = player.consecutiveFouls + 1
-                        var penaltyPoints = 0
-
-                        if (newConsecutiveFouls == 3) {
-                            penaltyPoints = 16
-                            newConsecutiveFouls = 0
-                            isThirdFoul = true
-                        }
-                        else if (player.isStarting && !_breakOffTaken) {
-                            penaltyPoints = 2
-                        }
-                        else {
-                            penaltyPoints = 1
-                        }
-
-                        var newBreak = player.currentBreak - penaltyPoints
-                        newHistoricalBreak = Break(
-                            player = player,
-                            pointsScored = newBreak,
-                            breakEndAction = if (isThirdFoul) BreakEndAction.ThirdFoul else BreakEndAction.Foul
-                        )
-
-                        val newBreakCount = player.breakCount + 1
-                        val newBreakSum = player.breakSum + newBreak
-
-                        player.copy(
-                            score = player.score - penaltyPoints,
-                            consecutiveFouls = newConsecutiveFouls,
-                            totalFouls = player.totalFouls + 1,
-                            breakCount = newBreakCount,
-                            breakSum = newBreakSum,
-                            averageBreak = newBreakSum.toFloat() / newBreakCount.toFloat(),
-                            highestBreak = maxOf(player.highestBreak, newBreak),
-                            currentBreak = 0,
-                            isAtTable = false
-                        )
-                    }
-                    nextIndex -> {
-                        player.copy(isAtTable = true)
-                    }
-                    else -> {
-                        player
-                    }
-                }
-            }
+    private fun replaceState(state: GameState?) {
+        synchronized(lock) {
+            undoStack.clear()
+            _state.value = state
+            _canUndo.value = false
         }
-
-        if (isThirdFoul) {
-            _tableState.update { currentState ->
-                currentState.copy(
-                    ballsOnTable = 15,
-                    rackNumber = currentState.rackNumber + 1
-                )
-            }
-        }
-
-        _breakHistory.update { currentList ->
-            currentList + newHistoricalBreak
-        }
-
-        _breakOffTaken = true
     }
 }

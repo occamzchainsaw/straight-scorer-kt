@@ -1,10 +1,15 @@
 package com.occamzchainsaw.core.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class PlayerMatchSummary(
-    var name: String = "",
-    var isWinner: Boolean = false,
-    var score: Int = 0,
-    var highestBreak: Int = 0,
-    var averageBreak: Float = 0f,
-    var totalFouls: Int = 0
+    val name: String,
+    val headStart: Int = 0,
+    val finalScore: Int,
+    val highestBreak: Int = 0,
+    val averageBreak: Float = 0f,
+    val breakCount: Int = 0,
+    val totalFouls: Int = 0,
+    val isWinner: Boolean = false
 )

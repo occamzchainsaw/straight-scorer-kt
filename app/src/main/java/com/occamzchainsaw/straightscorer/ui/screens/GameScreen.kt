@@ -1,5 +1,9 @@
 package com.occamzchainsaw.straightscorer.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,21 +46,32 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.occamzchainsaw.core.models.Break
 import com.occamzchainsaw.core.models.BreakEndAction
 import com.occamzchainsaw.core.models.Player
 import com.occamzchainsaw.core.models.TableState
 import com.occamzchainsaw.straightscorer.ui.navigation.BottomNavItem
 import com.occamzchainsaw.straightscorer.ui.navigation.GameSetup
+import com.occamzchainsaw.straightscorer.viewmodels.AppViewModelProvider
+import com.occamzchainsaw.straightscorer.viewmodels.GameEvent
 import com.occamzchainsaw.straightscorer.viewmodels.GameViewModel
+import com.occamzchainsaw.straightscorer.viewmodels.OpeningBreakFoul
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.vicart.compose.material.symbols.MaterialSymbols
-import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 
 private val ColorMiss = Color(0xFFF57C00)
@@ -68,7 +83,7 @@ private val ColorWin = Color(0xFFFFB300)
 private fun breakActionColor(action: BreakEndAction) = when (action) {
     BreakEndAction.Miss -> ColorMiss
     BreakEndAction.Safe -> ColorSafe
-    BreakEndAction.Foul -> ColorFoul
+    BreakEndAction.Foul, BreakEndAction.BreakingFoul -> ColorFoul
     BreakEndAction.ThirdFoul -> ColorThirdFoul
     BreakEndAction.Win -> ColorWin
 }
@@ -76,17 +91,79 @@ private fun breakActionColor(action: BreakEndAction) = when (action) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun gameScreen(
-    viewModel: GameViewModel,
     navController: NavController,
-    availableRoutes: List<BottomNavItem>
+    availableRoutes: List<BottomNavItem>,
+    viewModel: GameViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    val players by viewModel.players.collectAsState()
-    val breakHistory by viewModel.breakHistory.collectAsState()
-    val targetScore by viewModel.targetScore.collectAsState()
-    val tableState by viewModel.tableState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val goHome = {
+        if (!navController.popBackStack(GameSetup, inclusive = false)) {
+            navController.navigate(GameSetup) { launchSingleTop = true }
+        }
+    }
 
-    val isTwoPlayer = players.size == 2
-    val activePlayer = players.firstOrNull { it.isAtTable }
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                GameEvent.NavigateHome -> goHome()
+            }
+        }
+    }
+
+    val state = uiState
+    if (state == null) {
+        // no game (e.g. ended elsewhere) - nothing to show here
+        LaunchedEffect(Unit) { goHome() }
+        return
+    }
+
+    val view = LocalView.current
+    DisposableEffect(state.keepScreenOn) {
+        view.keepScreenOn = state.keepScreenOn
+        onDispose { view.keepScreenOn = false }
+    }
+
+    if (state.showOpeningBreakFoulDialog) {
+        openingBreakFoulDialog(
+            onChoice = viewModel::resolveOpeningBreakFoul,
+            onDismiss = viewModel::dismissOpeningBreakFoulDialog
+        )
+    }
+    if (state.isFinished) {
+        gameFinishedDialog(
+            winnerName = state.winner?.name.orEmpty(),
+            canUndo = state.canUndo,
+            onUndo = viewModel::undo,
+            onDiscard = viewModel::discardResult,
+            onClose = viewModel::closeFinishedGame
+        )
+    }
+
+    var showAbandonDialog by remember { mutableStateOf(false) }
+    if (showAbandonDialog) {
+        AlertDialog(
+            onDismissRequest = { showAbandonDialog = false },
+            title = { Text("Abandon game?") },
+            text = { Text("The game will end without saving a result.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAbandonDialog = false
+                    viewModel.abandonGame()
+                }) { Text("Abandon") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAbandonDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    val players = state.players
+    val breakHistory = state.breaks
+    val targetScore = state.targetScore
+    val tableState = state.table
+
+    val isTwoPlayer = state.isHeadToHead
+    val activePlayer = state.playerAtTable
     var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -110,6 +187,9 @@ fun gameScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = viewModel::undo, enabled = state.canUndo) {
+                        FilledRoundedSymbol(icon = MaterialSymbols.UNDO)
+                    }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             FilledRoundedSymbol(icon = MaterialSymbols.MORE_HORIZ)
@@ -118,6 +198,16 @@ fun gameScreen(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            if (!state.isFinished) {
+                                DropdownMenuItem(
+                                    text = { Text("Abandon game") },
+                                    leadingIcon = { FilledRoundedSymbol(MaterialSymbols.CLOSE) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showAbandonDialog = true
+                                    }
+                                )
+                            }
                             availableRoutes.forEach { item ->
                                 DropdownMenuItem(
                                     text = { Text(item.title) },
@@ -149,29 +239,35 @@ fun gameScreen(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Race to $targetScore",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium
+            )
 
-            // Player scores
             if (isTwoPlayer) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     players.forEach { player ->
-                        playerScoreCard(
+                        headToHeadPlayerCard(
                             player = player,
-                            targetScore = targetScore,
-                            compact = false,
+                            isAtTable = player.id == activePlayer.id,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     players.forEach { player ->
                         playerScoreCard(
                             player = player,
-                            targetScore = targetScore,
-                            compact = true,
+                            isAtTable = player.id == activePlayer.id,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -183,8 +279,9 @@ fun gameScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                currentBreakCard(activePlayer, Modifier.weight(1f))
-                rackInfoCard(tableState, Modifier.weight(1f))
+                smallInfoCard("Break", activePlayer.currentBreak, Modifier.weight(1f))
+                smallInfoCard("Rack", tableState.rackNumber, Modifier.weight(1f))
+                smallInfoCard("Balls on table", tableState.ballsOnTable, Modifier.weight(1f))
             }
 
             // History
@@ -208,11 +305,96 @@ fun gameScreen(
 
             // Action buttons
             gameActionButtons(
-                onAddPoint = { viewModel.addPoints() },
-                onSafe = { viewModel.safe() },
-                onMiss = { viewModel.miss() },
-                onFoul = { viewModel.foul() }
+                onAddPoint = viewModel::addPoint,
+                onSafe = viewModel::safe,
+                onMiss = viewModel::miss,
+                onFoul = viewModel::foul
             )
+        }
+    }
+}
+
+@Composable
+private fun headToHeadPlayerCard(
+    player: Player,
+    isAtTable: Boolean,
+    modifier: Modifier = Modifier,
+) {
+
+    val animatedBorderColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.primary
+        else
+            MaterialTheme.colorScheme.secondary,
+        label = "borderColor"
+    )
+
+    val animatedBorderStroke by animateDpAsState(
+        targetValue = if (isAtTable) 2.dp else 0.dp,
+        label = "borderStroke"
+    )
+
+    val animatedContainerColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.surface
+        else
+            MaterialTheme.colorScheme.surfaceDim,
+        label = "containerColor"
+    )
+
+    val animatedContentColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.onSurface
+        else
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "textColor"
+    )
+
+    Card(
+        modifier = modifier,
+        border = BorderStroke(width = animatedBorderStroke, color = animatedBorderColor),
+        colors = CardDefaults.cardColors(
+            containerColor = animatedContainerColor,
+            contentColor = animatedContentColor
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = player.name,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    repeat(player.consecutiveFouls) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "${player.score}",
+                    textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
         }
     }
 }
@@ -220,159 +402,107 @@ fun gameScreen(
 @Composable
 private fun playerScoreCard(
     player: Player,
-    targetScore: Int,
-    compact: Boolean,
-    modifier: Modifier = Modifier
+    isAtTable: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    val isAtTable = player.isAtTable
+
+    val animatedBorderColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.primary
+        else
+            MaterialTheme.colorScheme.secondary,
+        label = "borderColor"
+    )
+
+    val animatedBorderStroke by animateDpAsState(
+        targetValue = if (isAtTable) 2.dp else 0.dp,
+        label = "borderStroke"
+    )
+
+    val animatedContainerColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.surface
+        else
+            MaterialTheme.colorScheme.surfaceDim,
+        label = "containerColor"
+    )
+
+    val animatedContentColor by animateColorAsState(
+        targetValue = if (isAtTable)
+            MaterialTheme.colorScheme.onSurface
+        else
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "textColor"
+    )
+
     Card(
         modifier = modifier,
+        border = BorderStroke(width = animatedBorderStroke, color = animatedBorderColor),
         colors = CardDefaults.cardColors(
-            containerColor = if (isAtTable)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = animatedContainerColor,
+            contentColor = animatedContentColor
         )
     ) {
-        if (compact) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Fixed-width indicator slot so name is always aligned
-                Box(modifier = Modifier.width(14.dp), contentAlignment = Alignment.Center) {
-                    if (isAtTable) {
-                        Box(
-                            Modifier.size(8.dp).clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                player.name,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (player.consecutiveFouls > 0) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    repeat(player.consecutiveFouls) {
+                        Box(modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error)
                         )
                     }
                 }
-                Spacer(Modifier.width(6.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        player.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (player.consecutiveFouls > 0) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            repeat(player.consecutiveFouls) {
-                                Box(
-                                    Modifier.size(6.dp).clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.error)
-                                )
-                            }
-                        }
-                    }
-                }
-                Text(
-                    "${player.score}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    " / $targetScore",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-        } else {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.width(14.dp), contentAlignment = Alignment.Center) {
-                        if (isAtTable) {
-                            Box(
-                                Modifier.size(8.dp).clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        player.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "${player.score}",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "/ $targetScore",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (player.consecutiveFouls > 0) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            repeat(player.consecutiveFouls) {
-                                Box(
-                                    Modifier.size(8.dp).clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.error)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun currentBreakCard(activePlayer: Player?, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                "Current Break",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "${activePlayer?.currentBreak ?: 0}",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                activePlayer?.name ?: "—",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = "${player.score}",
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(0.2f)
             )
         }
     }
 }
 
 @Composable
-private fun rackInfoCard(tableState: TableState, modifier: Modifier = Modifier) {
+private fun <T : Any> smallInfoCard(
+    header: String,
+    data: T,
+    modifier: Modifier = Modifier
+) {
     Card(modifier = modifier) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
             Text(
-                "Table",
+                header,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                "${tableState.ballsOnTable}",
+                "$data",
+                modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "balls · rack ${tableState.rackNumber}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                textAlign = TextAlign.End
             )
         }
     }
@@ -390,9 +520,9 @@ private fun breakHistoryRow(
     isFirst: Boolean,
     isLast: Boolean
 ) {
-    val actionColor = breakActionColor(breakItem.breakEndAction)
+    val actionColor = breakActionColor(breakItem.endAction)
     val lineColor = MaterialTheme.colorScheme.outlineVariant
-    val isPlayer0 = isTwoPlayer && breakItem.player.name == players.getOrNull(0)?.name
+    val isPlayer0 = isTwoPlayer && breakItem.playerId == players.getOrNull(0)?.id
 
     Row(
         modifier = Modifier
@@ -458,14 +588,15 @@ private fun breakNodeInfo(
     showPlayer: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val actionLabel = when (breakItem.breakEndAction) {
+    val actionLabel = when (breakItem.endAction) {
         BreakEndAction.Miss -> "Miss"
         BreakEndAction.Safe -> "Safe"
         BreakEndAction.Foul -> "Foul"
+        BreakEndAction.BreakingFoul -> "Break foul"
         BreakEndAction.ThirdFoul -> "3× Foul"
         BreakEndAction.Win -> "Win!"
     }
-    val color = breakActionColor(breakItem.breakEndAction)
+    val color = breakActionColor(breakItem.endAction)
     val textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
     val alignment = if (alignEnd) Alignment.End else Alignment.Start
 
@@ -475,7 +606,7 @@ private fun breakNodeInfo(
     ) {
         if (showPlayer) {
             Text(
-                breakItem.player.name,
+                breakItem.playerName,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = textAlign,
@@ -490,9 +621,9 @@ private fun breakNodeInfo(
             fontWeight = FontWeight.SemiBold,
             textAlign = textAlign
         )
-        if (breakItem.pointsScored != 0) {
+        if (breakItem.netPoints != 0) {
             Text(
-                "${if (breakItem.pointsScored > 0) "+" else ""}${breakItem.pointsScored}",
+                "${if (breakItem.netPoints > 0) "+" else ""}${breakItem.netPoints}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = textAlign
@@ -531,4 +662,59 @@ private fun gameActionButtons(
             Text("Foul")
         }
     }
+}
+
+@Composable
+private fun openingBreakFoulDialog(
+    onChoice: (OpeningBreakFoul) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Foul on the break") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Breaking foul (-2): the incoming player accepts the table or asks for a re-break.")
+                TextButton(onClick = { onChoice(OpeningBreakFoul.BreakingAcceptTable) }) {
+                    Text("Breaking foul - accept table")
+                }
+                TextButton(onClick = { onChoice(OpeningBreakFoul.BreakingReBreak) }) {
+                    Text("Breaking foul - re-break")
+                }
+                TextButton(onClick = { onChoice(OpeningBreakFoul.Standard) }) {
+                    Text("Standard foul (-1)")
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun gameFinishedDialog(
+    winnerName: String,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
+    onDiscard: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("$winnerName wins!") },
+        text = { Text("The result has been saved to the match history.") },
+        confirmButton = {
+            TextButton(onClick = onClose) { Text("Done") }
+        },
+        dismissButton = {
+            Row {
+                if (canUndo) {
+                    TextButton(onClick = onUndo) { Text("Undo") }
+                }
+                TextButton(onClick = onDiscard) { Text("Discard") }
+            }
+        }
+    )
 }

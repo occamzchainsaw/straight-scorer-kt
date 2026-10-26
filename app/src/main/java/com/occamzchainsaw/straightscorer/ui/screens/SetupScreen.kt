@@ -24,7 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,36 +39,62 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.occamzchainsaw.core.models.Player
-import com.occamzchainsaw.straightscorer.dtos.PlayerSetupItem
+import com.occamzchainsaw.core.models.MatchSetup
 import com.occamzchainsaw.straightscorer.ui.components.playerEditCard
 import com.occamzchainsaw.straightscorer.ui.navigation.Game
-import com.occamzchainsaw.straightscorer.viewmodels.GameViewModel
+import com.occamzchainsaw.straightscorer.viewmodels.AppViewModelProvider
+import com.occamzchainsaw.straightscorer.viewmodels.SetupEvent
+import com.occamzchainsaw.straightscorer.viewmodels.SetupViewModel
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
 
-private const val MAX_PLAYERS = 10
-
 @Composable
-fun setupScreen(viewModel: GameViewModel = viewModel(), navController: NavController? = null) {
-    val isGameInProgress by viewModel.isMatchActive.collectAsState()
+fun setupScreen(
+    viewModel: SetupViewModel = viewModel(factory = AppViewModelProvider.Factory),
+    navController: NavController? = null
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val players = uiState.players
+    val playerErrors = uiState.playerErrors
+    var showReplaceDialog by remember { mutableStateOf(false) }
 
-    val players = remember {
-        mutableStateListOf(
-            PlayerSetupItem(isStarting = true),
-            PlayerSetupItem()
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                SetupEvent.NavigateToGame -> navController?.navigate(Game) {
+                    launchSingleTop = true
+                }
+                SetupEvent.ConfirmReplaceGame -> showReplaceDialog = true
+            }
+        }
+    }
+
+    if (showReplaceDialog) {
+        AlertDialog(
+            onDismissRequest = { showReplaceDialog = false },
+            title = { Text("Start a new game?") },
+            text = { Text("The game in progress will be lost.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showReplaceDialog = false
+                    viewModel.confirmNewGame()
+                }) { Text("Start new") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReplaceDialog = false }) { Text("Cancel") }
+            }
         )
     }
+
     var targetScoreValue by remember {
-        mutableStateOf(TextFieldValue("100"))
+        mutableStateOf(TextFieldValue(uiState.targetScoreText))
+    }
+    if (targetScoreValue.text != uiState.targetScoreText) {
+        targetScoreValue = TextFieldValue(uiState.targetScoreText)
     }
     var targetScoreTouched by remember { mutableStateOf(false) }
-    var attempted by remember { mutableStateOf(false) }
-
-    val targetScore = targetScoreValue.text.toIntOrNull() ?: 0
-    val targetScoreIsError = (targetScoreTouched || attempted) && targetScore < 10
-    val allNamesValid = players.all { it.name.isNotBlank() }
+    val targetScoreError = uiState.targetScoreError.takeIf { targetScoreTouched || uiState.showErrors }
 
     Column(
         modifier = Modifier
@@ -115,12 +143,11 @@ fun setupScreen(viewModel: GameViewModel = viewModel(), navController: NavContro
                         if (newValue.text.isEmpty() || newValue.text.all { it.isDigit() }) {
                             targetScoreValue = newValue
                             targetScoreTouched = true
+                            viewModel.updateTargetScore(newValue.text)
                         }
                     },
-                    isError = targetScoreIsError,
-                    supportingText = if (targetScoreIsError) {
-                        { Text("Minimum target score is 10") }
-                    } else null,
+                    isError = targetScoreError != null,
+                    supportingText = targetScoreError?.let { error -> { Text(error) } },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
@@ -136,7 +163,7 @@ fun setupScreen(viewModel: GameViewModel = viewModel(), navController: NavContro
         ) {
             Text("Players", style = MaterialTheme.typography.titleLarge)
             Text(
-                "${players.size} / $MAX_PLAYERS",
+                "${players.size} / ${MatchSetup.MAX_PLAYERS}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -156,24 +183,11 @@ fun setupScreen(viewModel: GameViewModel = viewModel(), navController: NavContro
                         fadeOutSpec = tween(durationMillis = 100)
                     ),
                     item = player,
-                    onItemUpdated = { updatedPlayer ->
-                        val index = players.indexOfFirst { it.id == updatedPlayer.id }
-                        if (index != -1) {
-                            if (updatedPlayer.isStarting && !player.isStarting) {
-                                for (i in players.indices) {
-                                    players[i] = players[i].copy(isStarting = false)
-                                }
-                            }
-                            players[index] = updatedPlayer
-                        }
-                    },
-                    showErrors = attempted,
-                    onDelete = if (players.size > 1) {
-                        {
-                            players.remove(player)
-                            if (players.none { it.isStarting })
-                                players[0] = players[0].copy(isStarting = true)
-                        }
+                    onItemUpdated = viewModel::updatePlayer,
+                    nameError = playerErrors[player.id]?.name?.takeIf { uiState.showErrors || player.name.isNotEmpty() },
+                    headStartError = playerErrors[player.id]?.headStart,
+                    onDelete = if (uiState.canRemovePlayer) {
+                        { viewModel.removePlayer(player.id) }
                     } else null
                 )
             }
@@ -186,42 +200,27 @@ fun setupScreen(viewModel: GameViewModel = viewModel(), navController: NavContro
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { players.add(PlayerSetupItem()) },
+                onClick = viewModel::addPlayer,
                 modifier = Modifier.weight(1f),
-                enabled = players.size < MAX_PLAYERS
+                enabled = uiState.canAddPlayer
             ) {
                 OutlinedRoundedSymbol(MaterialSymbols.PERSON_ADD)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Add Player")
             }
+            if (uiState.isGameInProgress) {
+                OutlinedButton(
+                    onClick = viewModel::startGame,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("New Game")
+                }
+            }
             Button(
-                onClick = {
-                    if (!isGameInProgress && (targetScore >= 10 && allNamesValid)) {
-                        viewModel.start(
-                            players.map {
-                                Player(
-                                    name = it.name,
-                                    isStarting = it.isStarting,
-                                    headStart = it.headStart.toIntOrNull() ?: 0
-                                )
-                            },
-                            targetScore
-                        )
-                        navController?.navigate(Game) {
-                            launchSingleTop = true
-                        }
-                    } else if (isGameInProgress) {
-                        navController?.navigate(Game) {
-                            restoreState = true
-                            launchSingleTop = true
-                        }
-                    } else {
-                        attempted = true
-                    }
-                },
+                onClick = if (uiState.isGameInProgress) viewModel::resumeGame else viewModel::startGame,
                 modifier = Modifier.weight(1f)
             ) {
-                Text(when (isGameInProgress) {
+                Text(when (uiState.isGameInProgress) {
                     true -> "Resume Game"
                     else -> "Start Game"
                 })

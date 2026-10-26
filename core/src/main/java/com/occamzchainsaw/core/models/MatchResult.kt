@@ -1,10 +1,18 @@
 package com.occamzchainsaw.core.models
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
-data class MatchResult (
+@Serializable
+data class MatchResult(
     val id: String = UUID.randomUUID().toString(),
-    val date: Long = System.currentTimeMillis(),
-    val winner: PlayerMatchSummary? = null,
-    val players: List<PlayerMatchSummary> = emptyList()
-)
+    val startedAt: Long,
+    val finishedAt: Long,
+    val targetScore: Int,
+    val racks: Int,
+    val players: List<PlayerMatchSummary>,
+    val breaks: List<Break> = emptyList()
+) {
+    val winner: PlayerMatchSummary?
+        get() = players.firstOrNull { it.isWinner }
+}

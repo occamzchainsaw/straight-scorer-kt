@@ -6,10 +6,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -22,7 +20,6 @@ import com.occamzchainsaw.straightscorer.ui.screens.setupScreen
 import com.occamzchainsaw.straightscorer.ui.screens.historyScreen
 import com.occamzchainsaw.straightscorer.ui.screens.rulesScreen
 import com.occamzchainsaw.straightscorer.ui.screens.settingsScreen
-import com.occamzchainsaw.straightscorer.viewmodels.GameViewModel
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
@@ -39,8 +36,6 @@ val bottomNavItems = listOf(
 @Composable
 fun StraightScorerApp() {
     val navController = rememberNavController()
-    val gameViewModel: GameViewModel = viewModel()
-    val isMatchActive by gameViewModel.isMatchActive.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -86,15 +81,11 @@ fun StraightScorerApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable<GameSetup> {
-                setupScreen(
-                    navController = navController,
-                    viewModel = gameViewModel
-                )
+                setupScreen(navController = navController)
             }
             composable<Game> {
                 gameScreen(
                     navController = navController,
-                    viewModel = gameViewModel,
                     availableRoutes = bottomNavItems
                 )
             }

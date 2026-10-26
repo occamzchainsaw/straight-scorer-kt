@@ -1,6 +1,8 @@
 plugins {
     id("java-library")
+    id("java-test-fixtures")
     alias(libs.plugins.jetbrains.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -12,9 +14,9 @@ kotlin {
     }
 }
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
-    testImplementation(libs.junit.junit)
-    testImplementation(libs.junit.junit)
-    testImplementation(libs.junit.junit)
-    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.22")
+    api(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.serialization.json)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
