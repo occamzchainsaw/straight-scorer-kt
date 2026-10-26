@@ -43,13 +43,23 @@ data class GameUiState(
     val playerAtTable: Player get() = game.playerAtTable
     val table: TableState get() = game.table
     val breaks: List<Break> get() = game.breaks
-    val targetScore: Int get() = game.targetScore
+    /** Null in practice. */
+    val targetScore: Int? get() = game.targetScore
+    val isPractice: Boolean get() = game.isPractice
     val isHeadToHead: Boolean get() = game.isHeadToHead
+    val isOpeningBreak: Boolean get() = game.table.isOpeningBreak
     val isFinished: Boolean get() = !game.isInProgress
     val winner: Player? get() = game.winner
 
-    /** Points the player at the table still needs; the most that can be added in one go. */
-    val pointsToWin: Int get() = game.targetScore - game.playerAtTable.score
+    /** Points the player at the table still needs to win; null in practice. */
+    val pointsToWin: Int? get() = game.targetScore?.let { it - game.playerAtTable.score }
+
+    /** The most points that can be added in one go. */
+    val maxPointsAtOnce: Int get() = pointsToWin ?: MAX_PRACTICE_POINTS_AT_ONCE
+
+    companion object {
+        const val MAX_PRACTICE_POINTS_AT_ONCE = 999
+    }
 }
 
 sealed interface GameEvent {
@@ -60,7 +70,9 @@ sealed interface GameEvent {
 class GameViewModel(
     private val engine: GameEngine,
     private val recorder: MatchRecorder,
-    settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository,
+    /** True while a game saved before process death is still being loaded. */
+    val isRestoring: StateFlow<Boolean> = MutableStateFlow(false)
 ) : ViewModel() {
 
     private val openingBreakFoulDialog = MutableStateFlow(false)
@@ -91,10 +103,10 @@ class GameViewModel(
 
     fun addPoint() = engine.addPoints(1)
 
-    /** Adds several balls at once. Returns false (and adds nothing) if [points] is not in 1..pointsToWin. */
+    /** Adds several balls at once. Returns false (and adds nothing) if [points] is not in 1..maxPointsAtOnce. */
     fun addPoints(points: Int): Boolean {
         val game = engine.state.value ?: return false
-        if (!game.isInProgress || points !in 1..game.targetScore - game.playerAtTable.score) return false
+        if (!game.isInProgress || points !in 1..GameUiState(game).maxPointsAtOnce) return false
         engine.addPoints(points)
         return true
     }
@@ -102,6 +114,12 @@ class GameViewModel(
     fun miss() = engine.miss()
 
     fun safe() = engine.safe()
+
+    /** Legal opening break with nothing pocketed. */
+    fun breakShot() = engine.breakShot()
+
+    /** Ends a practice session; the result is auto-saved and can be discarded from the result sheet. */
+    fun finishPractice() = engine.finishPractice()
 
     /** On an opening break this asks what kind of foul it was; otherwise it's a standard foul. */
     fun foul() {

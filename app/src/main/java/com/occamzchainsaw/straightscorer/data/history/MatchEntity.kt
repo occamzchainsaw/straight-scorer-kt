@@ -17,6 +17,7 @@ data class MatchEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "started_at") val startedAt: Long,
     @ColumnInfo(name = "finished_at") val finishedAt: Long,
+    /** 0 for practice sessions. */
     @ColumnInfo(name = "target_score") val targetScore: Int,
     val racks: Int,
     @ColumnInfo(name = "winner_name") val winnerName: String?,
@@ -32,7 +33,7 @@ fun MatchResult.toEntity() = MatchEntity(
     id = id,
     startedAt = startedAt,
     finishedAt = finishedAt,
-    targetScore = targetScore,
+    targetScore = targetScore ?: 0,
     racks = racks,
     winnerName = winner?.name,
     playersJson = json.encodeToString(players),
@@ -43,7 +44,7 @@ fun MatchEntity.toMatchResult() = MatchResult(
     id = id,
     startedAt = startedAt,
     finishedAt = finishedAt,
-    targetScore = targetScore,
+    targetScore = targetScore.takeIf { it > 0 },
     racks = racks,
     players = json.decodeFromString<List<PlayerMatchSummary>>(playersJson),
     breaks = json.decodeFromString<List<Break>>(breaksJson)

@@ -36,10 +36,14 @@ class GameEngine(
         replaceState(
             GameState(
                 players = setup.players.mapIndexed { index, player ->
-                    Player(id = index, name = player.name.trim(), headStart = player.headStart)
+                    Player(
+                        id = index,
+                        name = player.name.trim(),
+                        headStart = if (setup.isPractice) 0 else player.headStart
+                    )
                 },
                 atTableIndex = setup.startingPlayerIndex,
-                targetScore = setup.targetScore,
+                targetScore = setup.targetScore.takeUnless { setup.isPractice },
                 startedAt = clock()
             )
         )
@@ -78,6 +82,8 @@ class GameEngine(
     fun safe() = dispatch(GameAction.Safe)
     fun foul() = dispatch(GameAction.Foul)
     fun breakingFoul(reBreak: Boolean) = dispatch(GameAction.BreakingFoul(reBreak))
+    fun breakShot() = dispatch(GameAction.BreakShot)
+    fun finishPractice() = dispatch(GameAction.FinishPractice)
 
     /** Reverts the last action, including the one that won the game. */
     fun undo() {

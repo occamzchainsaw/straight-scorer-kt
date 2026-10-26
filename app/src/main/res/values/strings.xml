@@ -1,3 +1,123 @@
 <resources>
-    <string name="app_name">StraightScorer</string>
+    <string name="app_name">Straight Scorer</string>
+
+    <!-- Navigation -->
+    <string name="nav_play">Play</string>
+    <string name="nav_history">History</string>
+    <string name="nav_rules">Rules</string>
+    <string name="nav_settings">Settings</string>
+    <string name="coming_soon">Coming soon</string>
+
+    <!-- Common -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+
+    <!-- Game -->
+    <string name="game_title">Race to %1$d</string>
+    <string name="practice_title">Practice</string>
+    <string name="practice_finish">Finish</string>
+    <string name="practice_highest">Highest</string>
+    <string name="practice_average">Average</string>
+    <string name="practice_finished">Practice finished</string>
+    <string name="practice_summary">%1$d racks · %2$s</string>
+    <string name="game_restoring">Restoring your game…</string>
+    <string name="game_undo">Undo</string>
+    <string name="game_abandon">Abandon game</string>
+    <string name="game_abandon_title">Abandon game?</string>
+    <string name="game_abandon_text">The game will end without saving a result.</string>
+    <string name="game_abandon_confirm">Abandon</string>
+    <string name="game_rack">Rack %1$d</string>
+    <plurals name="game_balls_on_table">
+        <item quantity="one">%1$d ball on table</item>
+        <item quantity="other">%1$d balls on table</item>
+    </plurals>
+    <string name="game_break">Break %1$d</string>
+    <string name="game_break_label">Break</string>
+    <string name="game_at_table">At the table</string>
+    <string name="game_opening_break">Opening break</string>
+    <plurals name="game_consecutive_fouls">
+        <item quantity="one">%1$d consecutive foul</item>
+        <item quantity="other">%1$d consecutive fouls</item>
+    </plurals>
+    <string name="game_progress">%1$d%% of target</string>
+
+    <string name="action_add_point">+1</string>
+    <string name="action_add_points">+n</string>
+    <string name="action_add_points_description">Add several points</string>
+    <string name="action_safe">Safe</string>
+    <string name="action_miss">Miss</string>
+    <string name="action_foul">Foul</string>
+    <string name="action_break_shot">Break</string>
+    <string name="action_break_shot_description">Legal break, nothing pocketed</string>
+
+    <string name="outcome_win">Win</string>
+    <string name="outcome_safe">Safe</string>
+    <string name="outcome_miss">Miss</string>
+    <string name="outcome_foul">Foul</string>
+    <string name="outcome_breaking_foul">Foul</string>
+    <string name="outcome_break_shot">Break</string>
+    <string name="outcome_finish">End</string>
+    <string name="outcome_third_foul">Third foul</string>
+
+    <string name="history_title">History</string>
+    <string name="history_empty">Breaks will appear here as the game goes on.</string>
+
+    <string name="add_points_title">Add points</string>
+    <string name="add_points_subtitle">%1$d needed to win</string>
+    <string name="add_points_custom">Custom</string>
+    <string name="add_points_add">Add %1$d</string>
+    <string name="add_points_add_empty">Add</string>
+    <string name="add_points_invalid">Enter 1–%1$d</string>
+
+    <string name="opening_foul_title">Foul on the break</string>
+    <string name="opening_foul_subtitle">Breaking foul: the incoming player chooses.</string>
+    <string name="opening_foul_accept">Accept table</string>
+    <string name="opening_foul_accept_text">Play on from the balls as they lie.</string>
+    <string name="opening_foul_rebreak">Re-break</string>
+    <string name="opening_foul_rebreak_text">The breaker has to break again.</string>
+    <string name="opening_foul_standard_header">Legal break, then a foul</string>
+    <string name="opening_foul_standard">Standard foul</string>
+    <string name="opening_foul_standard_text">e.g. a scratch after a legal break (rules 10.1, 11).</string>
+
+    <string name="result_wins">%1$s wins!</string>
+    <string name="result_summary">Race to %1$d · %2$d racks · %3$s</string>
+    <string name="result_saved">Saved to match history</string>
+    <string name="result_player">Player</string>
+    <string name="result_score">Score</string>
+    <string name="result_high_break">High</string>
+    <string name="result_average">Avg</string>
+    <string name="result_fouls">Fouls</string>
+    <string name="result_done">Done</string>
+    <string name="result_discard">Discard</string>
+    <string name="result_undo">Undo last shot</string>
+
+    <!-- Setup -->
+    <string name="setup_title">New game</string>
+    <string name="setup_resume_label">Game in progress</string>
+    <string name="setup_resume">Resume</string>
+    <string name="setup_resume_head_to_head">%1$s %2$s – %3$s %4$s</string>
+    <string name="setup_resume_leader">%1$s leads with %2$s</string>
+    <string name="setup_resume_practice">%1$s · %2$s points</string>
+    <string name="setup_resume_details">Race to %1$d · Rack %2$d</string>
+    <string name="setup_resume_details_practice">Practice · Rack %1$d</string>
+    <string name="setup_target_score">Target score</string>
+    <string name="setup_practice_title">Practice mode</string>
+    <string name="setup_practice_text">One player, no target. Pot as many as you like and finish whenever you want – the session is saved for your stats.</string>
+    <string name="setup_players">Players</string>
+    <string name="setup_player_count">%1$d / %2$d</string>
+    <string name="setup_name">Name</string>
+    <string name="setup_head_start">Head start</string>
+    <string name="setup_breaks">Breaks</string>
+    <string name="setup_reorder">Drag to change the order</string>
+    <string name="setup_add_player">Add player</string>
+    <string name="setup_swipe_hint">Swipe a player away to remove them</string>
+    <string name="setup_player_removed">%1$s removed</string>
+    <string name="setup_start_game">Start game</string>
+    <string name="setup_start_practice">Start practice</string>
+    <string name="setup_replace_title">Start a new game?</string>
+    <string name="setup_replace_text">The game in progress will be lost.</string>
+    <string name="setup_replace_confirm">Start new</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_delete">Delete</string>
 </resources>

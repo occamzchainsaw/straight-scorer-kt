@@ -8,7 +8,13 @@ enum class BreakEndAction {
     Foul,
     BreakingFoul,
     ThirdFoul,
-    Win
+    Win,
+
+    /** A legal opening break with nothing pocketed. */
+    BreakShot,
+
+    /** The visit that was running when a practice session was finished. */
+    Finish
 }
 
 /**

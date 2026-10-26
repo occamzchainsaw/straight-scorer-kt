@@ -1,14 +1,10 @@
 package com.occamzchainsaw.straightscorer.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.occamzchainsaw.straightscorer.R
 
 @Composable
-fun historyScreen() {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text("History Screen")
-    }
+fun HistoryScreen() {
+    PlaceholderScreen(title = stringResource(R.string.nav_history))
 }

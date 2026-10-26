@@ -8,5 +8,6 @@ sealed interface GameStatus {
     data object InProgress : GameStatus
 
     @Serializable
-    data class Finished(val winnerId: Int) : GameStatus
+    /** [winnerId] is null when a practice session was finished. */
+    data class Finished(val winnerId: Int?) : GameStatus
 }

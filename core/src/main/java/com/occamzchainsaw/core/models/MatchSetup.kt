@@ -5,11 +5,15 @@ data class PlayerSetup(
     val headStart: Int = 0
 )
 
+/** A single player means practice: no target score, no winner, head starts are ignored. */
 data class MatchSetup(
     val players: List<PlayerSetup>,
     val targetScore: Int,
     val startingPlayerIndex: Int = 0
 ) {
+    val isPractice: Boolean
+        get() = players.size == 1
+
     enum class Error {
         NoPlayers,
         TooManyPlayers,
@@ -23,10 +27,12 @@ data class MatchSetup(
     fun validate(): Set<Error> = buildSet {
         if (players.isEmpty()) add(Error.NoPlayers)
         if (players.size > MAX_PLAYERS) add(Error.TooManyPlayers)
-        if (targetScore !in MIN_TARGET_SCORE..MAX_TARGET_SCORE) add(Error.TargetScoreOutOfRange)
+        if (!isPractice && targetScore !in MIN_TARGET_SCORE..MAX_TARGET_SCORE) add(Error.TargetScoreOutOfRange)
         if (players.any { it.name.trim().length !in 1..MAX_NAME_LENGTH }) add(Error.InvalidName)
         if (players.map { it.name.trim().lowercase() }.toSet().size < players.size) add(Error.DuplicateNames)
-        if (players.any { it.headStart < 0 || it.headStart >= targetScore }) add(Error.HeadStartOutOfRange)
+        if (!isPractice && players.any { it.headStart < 0 || it.headStart >= targetScore }) {
+            add(Error.HeadStartOutOfRange)
+        }
         if (startingPlayerIndex !in players.indices) add(Error.InvalidStartingPlayer)
     }
 

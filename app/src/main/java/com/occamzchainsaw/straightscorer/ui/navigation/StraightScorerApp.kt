@@ -1,97 +1,101 @@
 package com.occamzchainsaw.straightscorer.ui.navigation
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
+import androidx.annotation.StringRes
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.NavDestination.Companion.hasRoute
-import com.occamzchainsaw.straightscorer.ui.screens.gameScreen
-import com.occamzchainsaw.straightscorer.ui.screens.setupScreen
-import com.occamzchainsaw.straightscorer.ui.screens.historyScreen
-import com.occamzchainsaw.straightscorer.ui.screens.rulesScreen
-import com.occamzchainsaw.straightscorer.ui.screens.settingsScreen
+import com.occamzchainsaw.straightscorer.R
+import com.occamzchainsaw.straightscorer.ui.game.GameScreen
+import com.occamzchainsaw.straightscorer.ui.screens.HistoryScreen
+import com.occamzchainsaw.straightscorer.ui.screens.RulesScreen
+import com.occamzchainsaw.straightscorer.ui.screens.SettingsScreen
+import com.occamzchainsaw.straightscorer.ui.setup.SetupScreen
+import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
 
-data class BottomNavItem(val title: String, val route: Any, val symbol: String)
+enum class TopLevelDestination(@StringRes val label: Int, val route: Any, val symbol: String) {
+    Play(R.string.nav_play, GameSetup, MaterialSymbols.PLAY_ARROW),
+    History(R.string.nav_history, com.occamzchainsaw.straightscorer.ui.navigation.History, MaterialSymbols.HISTORY),
+    Rules(R.string.nav_rules, com.occamzchainsaw.straightscorer.ui.navigation.Rules, MaterialSymbols.MENU_BOOK),
+    Settings(R.string.nav_settings, com.occamzchainsaw.straightscorer.ui.navigation.Settings, MaterialSymbols.SETTINGS)
+}
 
-val bottomNavItems = listOf(
-    BottomNavItem("Setup", GameSetup, MaterialSymbols.PLAY_ARROW),
-    BottomNavItem("Rules", Rules, MaterialSymbols.BALANCE),
-    BottomNavItem("History", History, MaterialSymbols.HISTORY),
-    BottomNavItem("Settings", Settings, MaterialSymbols.SETTINGS)
-)
+private fun NavDestination?.isTopLevel(destination: TopLevelDestination) =
+    this?.hierarchy?.any { it.hasRoute(destination.route::class) } == true
+
+private fun NavHostController.navigateToTopLevel(destination: TopLevelDestination) =
+    navigate(destination.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
 
 @Composable
 fun StraightScorerApp() {
     val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+    val showNavigation = TopLevelDestination.entries.any { currentDestination.isTopLevel(it) }
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
+    val adaptiveType = NavigationSuiteScaffoldDefaults.navigationSuiteType(currentWindowAdaptiveInfo())
 
-    val showBottomNav = bottomNavItems.any {item ->
-        currentDestination?.hierarchy?.any { it.hasRoute(item.route::class) } == true
-    }
-
-    Scaffold(
-        bottomBar = {
-            if (showBottomNav) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        val isSelected = currentDestination?.hierarchy?.any {
-                            it.hasRoute(item.route::class)
-                        } == true
-
-                        NavigationBarItem(
-                            selected = isSelected,
-                            label = { Text(item.title) },
-                            icon = {
-                                if (isSelected) FilledRoundedSymbol(item.symbol)
-                                else OutlinedRoundedSymbol(item.symbol)
-                            },
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        )
-                    }
-                }
+    NavigationSuiteScaffold(
+        layoutType = if (showNavigation) adaptiveType else NavigationSuiteType.None,
+        navigationSuiteItems = {
+            TopLevelDestination.entries.forEach { destination ->
+                val selected = currentDestination.isTopLevel(destination)
+                item(
+                    selected = selected,
+                    onClick = { navController.navigateToTopLevel(destination) },
+                    icon = {
+                        if (selected) FilledRoundedSymbol(destination.symbol)
+                        else OutlinedRoundedSymbol(destination.symbol)
+                    },
+                    label = { Text(stringResource(destination.label)) }
+                )
             }
         }
-    ) { innerPadding ->
+    ) {
         NavHost(
             navController = navController,
             startDestination = GameSetup,
-            modifier = Modifier.padding(innerPadding)
+            enterTransition = { fadeIn(tween(ScorerMotion.MEDIUM, easing = ScorerMotion.EmphasizedDecelerate)) },
+            exitTransition = { fadeOut(tween(ScorerMotion.SHORT, easing = ScorerMotion.EmphasizedAccelerate)) }
         ) {
             composable<GameSetup> {
-                setupScreen(navController = navController)
+                SetupScreen(onNavigateToGame = { navController.navigate(Game) { launchSingleTop = true } })
             }
             composable<Game> {
-                gameScreen(
-                    navController = navController,
-                    availableRoutes = bottomNavItems
+                GameScreen(
+                    onNavigateHome = {
+                        if (!navController.popBackStack(GameSetup, inclusive = false)) {
+                            navController.navigateToTopLevel(TopLevelDestination.Play)
+                        }
+                    }
                 )
             }
-            composable<History> { historyScreen() }
-            composable<Settings> { settingsScreen() }
-            composable<Rules> { rulesScreen() }
+            composable<History> { HistoryScreen() }
+            composable<Settings> { SettingsScreen() }
+            composable<Rules> { RulesScreen() }
         }
     }
 }

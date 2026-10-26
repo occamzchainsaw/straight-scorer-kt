@@ -184,4 +184,31 @@ class GameViewModelTest {
         assertTrue(history.matches.value.isEmpty())
         assertEquals(listOf(GameEvent.NavigateHome), events)
     }
+
+    @Test
+    fun practice_allowsLargePointAdds_andFinishesOnRequest() {
+        engine.startGame(MatchSetup(listOf(PlayerSetup("Solo")), targetScore = 10))
+
+        assertTrue(state.isPractice)
+        assertNull(state.pointsToWin)
+        assertTrue(viewModel.addPoints(150))
+        assertFalse(viewModel.addPoints(GameUiState.MAX_PRACTICE_POINTS_AT_ONCE + 1))
+        assertFalse(state.isFinished)
+
+        viewModel.finishPractice()
+        assertTrue(state.isFinished)
+        assertNull(state.winner)
+    }
+
+    @Test
+    fun breakShot_passesTurnAndEndsOpeningBreak() {
+        startGame()
+        assertTrue(state.isOpeningBreak)
+
+        viewModel.breakShot()
+
+        assertFalse(state.isOpeningBreak)
+        assertEquals(1, state.atTableIndex)
+        assertEquals(BreakEndAction.BreakShot, state.breaks.single().endAction)
+    }
 }

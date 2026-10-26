@@ -13,7 +13,12 @@ object AppViewModelProvider {
     val Factory: ViewModelProvider.Factory = viewModelFactory {
         initializer { SetupViewModel(container().gameEngine, container().settingsRepository) }
         initializer {
-            GameViewModel(container().gameEngine, container().matchRecorder, container().settingsRepository)
+            GameViewModel(
+                container().gameEngine,
+                container().matchRecorder,
+                container().settingsRepository,
+                container().isRestoringGame
+            )
         }
         initializer { HistoryViewModel(container().matchHistoryRepository) }
         initializer { SettingsViewModel(container().settingsRepository) }

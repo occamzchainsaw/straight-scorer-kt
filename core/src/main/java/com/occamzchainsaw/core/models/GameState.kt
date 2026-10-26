@@ -9,7 +9,8 @@ data class GameState(
     val id: String = UUID.randomUUID().toString(),
     val players: List<Player>,
     val atTableIndex: Int,
-    val targetScore: Int,
+    /** Null in practice mode: no target and no winner. */
+    val targetScore: Int?,
     val table: TableState = TableState(),
     val breaks: List<Break> = emptyList(),
     val status: GameStatus = GameStatus.InProgress,
@@ -29,4 +30,7 @@ data class GameState(
 
     val isHeadToHead: Boolean
         get() = players.size == 2
+
+    val isPractice: Boolean
+        get() = targetScore == null
 }

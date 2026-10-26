@@ -9,6 +9,7 @@ import com.occamzchainsaw.core.models.Player
 import com.occamzchainsaw.core.models.TableState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,7 +18,7 @@ class GameReducerTest {
 
     private fun game(
         playerCount: Int = 2,
-        targetScore: Int = 100,
+        targetScore: Int? = 100,
         table: TableState = TableState(),
         players: List<Player> = (0 until playerCount).map { Player(id = it, name = "P$it") }
     ) = GameState(
@@ -340,6 +341,89 @@ class GameReducerTest {
 
         assertEquals(-18, state.players[0].score)
         assertEquals(1, state.atTableIndex)
+    }
+
+    // endregion
+
+    // region break shot
+
+    @Test
+    fun breakShot_endsOpeningBreak_andPassesTurn() {
+        val state = game().apply(GameAction.BreakShot)
+
+        assertEquals(1, state.atTableIndex)
+        assertFalse(state.table.isOpeningBreak)
+        assertEquals(15, state.table.ballsOnTable)
+        assertEquals(0, state.players[0].breakCount)
+        assertEquals(BreakEndAction.BreakShot, state.breaks.single().endAction)
+        assertEquals(0, state.breaks.single().netPoints)
+    }
+
+    @Test
+    fun breakShot_resetsConsecutiveFouls_afterThirdFoulRerack() {
+        val players = listOf(Player(id = 0, name = "A", consecutiveFouls = 2), Player(id = 1, name = "B"))
+        val state = game(players = players, table = TableState(isOpeningBreak = false))
+            .apply(GameAction.Foul, GameAction.BreakShot)
+
+        assertEquals(0, state.players[0].consecutiveFouls)
+        assertEquals(1, state.atTableIndex)
+    }
+
+    @Test
+    fun breakShot_outsideOpeningBreak_isIgnored() {
+        val started = game().apply(GameAction.AddPoints(1))
+
+        assertSame(started, started.apply(GameAction.BreakShot))
+    }
+
+    // endregion
+
+    // region practice
+
+    @Test
+    fun practice_hasNoTarget_soPointsAreNeverClampedOrWinning() {
+        val state = game(playerCount = 1, targetScore = null).apply(GameAction.AddPoints(500))
+
+        assertEquals(500, state.players[0].score)
+        assertTrue(state.isInProgress)
+    }
+
+    @Test
+    fun practice_turnStaysWithThePlayer() {
+        val state = game(playerCount = 1, targetScore = null)
+            .apply(GameAction.BreakShot, GameAction.AddPoints(3), GameAction.Miss, GameAction.Foul)
+
+        assertEquals(0, state.atTableIndex)
+        assertEquals(2, state.players[0].score)
+    }
+
+    @Test
+    fun finishPractice_closesRunningBreak_andFinishesWithoutWinner() {
+        val state = game(playerCount = 1, targetScore = null)
+            .apply(GameAction.AddPoints(4), GameAction.Miss, GameAction.AddPoints(9), GameAction.FinishPractice)
+
+        assertEquals(GameStatus.Finished(winnerId = null), state.status)
+        assertNull(state.winner)
+        assertEquals(42L, state.finishedAt)
+        assertEquals(9, state.players[0].highestBreak)
+        assertEquals(2, state.players[0].breakCount)
+        assertEquals(BreakEndAction.Finish, state.breaks.last().endAction)
+    }
+
+    @Test
+    fun finishPractice_withoutRunningBreak_addsNoHistory() {
+        val state = game(playerCount = 1, targetScore = null)
+            .apply(GameAction.AddPoints(4), GameAction.Miss, GameAction.FinishPractice)
+
+        assertEquals(BreakEndAction.Miss, state.breaks.last().endAction)
+        assertEquals(1, state.players[0].breakCount)
+    }
+
+    @Test
+    fun finishPractice_isIgnoredInAMatch() {
+        val match = game()
+
+        assertSame(match, match.apply(GameAction.FinishPractice))
     }
 
     // endregion

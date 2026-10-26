@@ -171,4 +171,26 @@ class GameEngineTest {
         assertEquals(3, result.racks)
         assertEquals(1, result.breaks.size)
     }
+
+    @Test
+    fun singlePlayer_startsPractice_ignoringTargetAndHeadStart() {
+        engine.startGame(MatchSetup(listOf(PlayerSetup("Solo", headStart = 30)), targetScore = 5))
+
+        val state = engine.state.value!!
+        assertTrue(state.isPractice)
+        assertNull(state.targetScore)
+        assertEquals(0, state.players[0].score)
+    }
+
+    @Test
+    fun finishedPractice_mapsToResultWithoutWinner() {
+        engine.startGame(MatchSetup(listOf(PlayerSetup("Solo")), targetScore = 100))
+        engine.addPoints(12)
+        engine.finishPractice()
+
+        val result = engine.state.value!!.toMatchResult()!!
+        assertTrue(result.isPractice)
+        assertNull(result.winner)
+        assertEquals(12, result.players.single().highestBreak)
+    }
 }

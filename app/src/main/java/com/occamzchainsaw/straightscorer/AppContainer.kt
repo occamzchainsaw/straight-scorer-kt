@@ -52,6 +52,9 @@ class AppContainer(context: Context) {
         FileActiveGameStore(File(appContext.filesDir, "active_game.json"))
     )
 
+    /** True while the game saved before the app was killed is being loaded. */
+    val isRestoringGame = activeGamePersister.isRestoring
+
     init {
         appScope.launch { activeGamePersister.run() }
         appScope.launch { matchRecorder.run() }

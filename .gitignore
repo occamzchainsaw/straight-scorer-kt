@@ -4,6 +4,7 @@
 .DS_Store
 /build/
 local.properties
+app/screenshots
 
 # Log/OS Files
 *.log

@@ -28,6 +28,8 @@ object GameReducer {
             GameAction.Safe -> endVisit(state, BreakEndAction.Safe, settings.countSafetiesInAverage)
             GameAction.Foul -> foul(state, settings)
             is GameAction.BreakingFoul -> breakingFoul(state, action.reBreak)
+            GameAction.BreakShot -> breakShot(state)
+            GameAction.FinishPractice -> finishPractice(state, now)
         }
     }
 
@@ -35,7 +37,8 @@ object GameReducer {
         if (points <= 0) return state
 
         val player = state.playerAtTable
-        val awarded = minOf(points, state.targetScore - player.score)
+        val target = state.targetScore
+        val awarded = if (target == null) points else minOf(points, target - player.score)
         val table = state.table.pocketBalls(awarded)
         val scored = player.copy(
             score = player.score + awarded,
@@ -43,7 +46,7 @@ object GameReducer {
             consecutiveFouls = 0
         )
 
-        if (scored.score < state.targetScore) {
+        if (target == null || scored.score < target) {
             return state.withPlayer(scored).copy(table = table)
         }
 
@@ -121,6 +124,35 @@ object GameReducer {
                 state.table.rackNumber,
                 BREAKING_FOUL_PENALTY
             )
+        )
+    }
+
+    /** Legal opening break with nothing pocketed: a legal shot, so the foul count resets, and the turn passes. */
+    private fun breakShot(state: GameState): GameState {
+        if (!state.table.isOpeningBreak) return state
+
+        val player = state.playerAtTable
+        return state.withPlayer(player.closeVisit(countInAverage = false).copy(consecutiveFouls = 0)).copy(
+            atTableIndex = state.nextIndex(),
+            table = state.table.copy(isOpeningBreak = false),
+            breaks = state.breaks + player.toBreak(BreakEndAction.BreakShot, state.table.rackNumber)
+        )
+    }
+
+    /** Ends practice; a break in progress is recorded and counted. */
+    private fun finishPractice(state: GameState, now: Long): GameState {
+        if (!state.isPractice) return state
+
+        val player = state.playerAtTable
+        val breaks = if (player.currentBreak > 0) {
+            state.breaks + player.toBreak(BreakEndAction.Finish, state.table.rackNumber)
+        } else {
+            state.breaks
+        }
+        return state.withPlayer(player.closeVisit(countInAverage = false)).copy(
+            breaks = breaks,
+            status = GameStatus.Finished(winnerId = null),
+            finishedAt = now
         )
     }
 

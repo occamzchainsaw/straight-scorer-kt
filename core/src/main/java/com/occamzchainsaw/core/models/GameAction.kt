@@ -13,4 +13,10 @@ sealed interface GameAction {
      * [reBreak] - the incoming player requires the breaker to break again instead of accepting the table.
      */
     data class BreakingFoul(val reBreak: Boolean) : GameAction
+
+    /** A legal opening break with no ball pocketed - the turn passes. */
+    data object BreakShot : GameAction
+
+    /** Ends a practice session; ignored in a match. */
+    data object FinishPractice : GameAction
 }

@@ -80,4 +80,17 @@ class ActiveGamePersisterTest {
             assertEquals(75, engine.state.value!!.targetScore)
         }
     }
+
+    @Test
+    fun isRestoring_untilLoadFinished() {
+        val engine = GameEngine()
+        val persister = ActiveGamePersister(engine, FakeActiveGameStore(savedGame()))
+        assertEquals(true, persister.isRestoring.value)
+
+        runTest(UnconfinedTestDispatcher()) {
+            val job = launch { persister.run() }
+            assertEquals(false, persister.isRestoring.value)
+            job.cancel()
+        }
+    }
 }

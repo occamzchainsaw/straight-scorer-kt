@@ -13,7 +13,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.occamzchainsaw.straightscorer.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.occamzchainsaw.straightscorer.viewmodels.AppViewModelProvider
 import com.occamzchainsaw.straightscorer.viewmodels.RulesUiState
@@ -21,10 +23,10 @@ import com.occamzchainsaw.straightscorer.viewmodels.RulesViewModel
 
 // Placeholder rendering (raw markdown) until the screen is redesigned.
 @Composable
-fun rulesScreen(viewModel: RulesViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
+fun RulesScreen(viewModel: RulesViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PlaceholderScreen(title = stringResource(R.string.nav_rules)) { Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
             RulesUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             RulesUiState.Error -> Text("Couldn't load the rules.", modifier = Modifier.align(Alignment.Center))
@@ -37,4 +39,5 @@ fun rulesScreen(viewModel: RulesViewModel = viewModel(factory = AppViewModelProv
             )
         }
     }
+}
 }

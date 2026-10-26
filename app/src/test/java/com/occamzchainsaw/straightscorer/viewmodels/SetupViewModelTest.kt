@@ -198,4 +198,48 @@ class SetupViewModelTest {
 
         assertFalse(state.isGameInProgress)
     }
+
+    @Test
+    fun singlePlayer_isPractice_ignoringTargetAndHeadStart() {
+        viewModel.removePlayer(player(1).id)
+        viewModel.updateTargetScore("")
+        viewModel.updatePlayer(player(0).copy(headStart = "500"))
+
+        assertTrue(state.isPractice)
+        assertNull(state.targetScoreError)
+        assertTrue(state.isValid)
+
+        viewModel.startGame()
+        assertTrue(engine.state.value!!.isPractice)
+    }
+
+    @Test
+    fun removedPlayer_canBeRestoredInPlace() {
+        viewModel.addPlayer()
+        viewModel.setStartingPlayer(player(1).id)
+        val removed = player(1)
+        viewModel.removePlayer(removed.id)
+        assertTrue(player(0).isStarting)
+
+        viewModel.undoRemovePlayer()
+
+        assertEquals(listOf("Player 1", "Player 2", "Player 3"), state.players.map { it.name })
+        assertEquals(listOf(false, true, false), state.players.map { it.isStarting })
+    }
+
+    @Test
+    fun movePlayer_byId() {
+        viewModel.addPlayer()
+        viewModel.movePlayer(player(0).id, player(2).id)
+
+        assertEquals(listOf("Player 2", "Player 3", "Player 1"), state.players.map { it.name })
+    }
+
+    @Test
+    fun activeGame_isExposedForTheResumeCard() {
+        viewModel.startGame()
+        engine.addPoints(4)
+
+        assertEquals(4, state.activeGame?.players?.get(0)?.score)
+    }
 }

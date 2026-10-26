@@ -2,6 +2,7 @@ package com.occamzchainsaw.straightscorer.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.occamzchainsaw.core.models.GameState
 import com.occamzchainsaw.core.models.MatchSetup
 import com.occamzchainsaw.core.models.PlayerSetup
 import com.occamzchainsaw.core.services.GameEngine
@@ -33,13 +34,21 @@ data class SetupUiState(
     /** Set after a failed start attempt, so the screen can show every error at once. */
     val showErrors: Boolean = false,
     /** A started game that hasn't been finished yet - the home screen offers to resume it. */
-    val isGameInProgress: Boolean = false
+    val activeGame: GameState? = null
 ) {
+    val isGameInProgress: Boolean
+        get() = activeGame != null
+
     val targetScore: Int?
         get() = targetScoreText.toIntOrNull()
 
+    /** One player means practice: no target score and no head starts. */
+    val isPractice: Boolean
+        get() = players.size == 1
+
     val targetScoreError: String?
         get() {
+            if (isPractice) return null
             val score = targetScore
             return when {
                 score == null || score < MatchSetup.MIN_TARGET_SCORE ->
@@ -66,6 +75,7 @@ data class SetupUiState(
                         else -> null
                     },
                     headStart = when {
+                        isPractice -> null
                         headStart == null || headStart < 0 -> "Invalid head start"
                         target != null && headStart >= target -> "Must be less than the target score"
                         else -> null
@@ -117,7 +127,7 @@ class SetupViewModel(
     private var targetScoreEdited = false
 
     val uiState: StateFlow<SetupUiState> = combine(form, engine.state) { form, game ->
-        form.copy(isGameInProgress = game?.isInProgress == true)
+        form.copy(activeGame = game?.takeIf { it.isInProgress })
     }.stateIn(viewModelScope, SharingStarted.Eagerly, form.value)
 
     private val _events = Channel<SetupEvent>(Channel.BUFFERED)
@@ -146,11 +156,27 @@ class SetupViewModel(
         }
     }
 
+    private var lastRemoved: Pair<Int, PlayerSetupItem>? = null
+
     fun removePlayer(id: String) {
         form.update { state ->
-            if (!state.canRemovePlayer) return@update state
+            val index = state.players.indexOfFirst { it.id == id }
+            if (!state.canRemovePlayer || index == -1) return@update state
+            lastRemoved = index to state.players[index]
             val remaining = state.players.filterNot { it.id == id }
             state.copy(players = remaining.ensureStartingPlayer())
+        }
+    }
+
+    /** Puts the last removed player back where they were (as long as there is room). */
+    fun undoRemovePlayer() {
+        val (index, player) = lastRemoved ?: return
+        lastRemoved = null
+        form.update { state ->
+            if (!state.canAddPlayer || state.players.any { it.id == player.id }) return@update state
+            val players = state.players.toMutableList()
+            players.add(index.coerceAtMost(players.size), player)
+            state.copy(players = players.ensureSingleStartingPlayer(preferred = player.id.takeIf { player.isStarting }))
         }
     }
 
@@ -173,6 +199,12 @@ class SetupViewModel(
         form.update { state ->
             state.copy(players = state.players.map { it.copy(isStarting = it.id == id) })
         }
+    }
+
+    /** Moves the player with [id] to where [targetId] currently is (drag and drop). */
+    fun movePlayer(id: String, targetId: String) {
+        val players = form.value.players
+        movePlayer(players.indexOfFirst { it.id == id }, players.indexOfFirst { it.id == targetId })
     }
 
     /** Reorders players; list order is turn order. */
@@ -211,6 +243,11 @@ class SetupViewModel(
         engine.startGame(state.toMatchSetup())
         form.update { it.copy(showErrors = false) }
         _events.trySend(SetupEvent.NavigateToGame)
+    }
+
+    private fun List<PlayerSetupItem>.ensureSingleStartingPlayer(preferred: String?): List<PlayerSetupItem> {
+        val starter = preferred ?: firstOrNull { it.isStarting }?.id ?: return ensureStartingPlayer()
+        return map { it.copy(isStarting = it.id == starter) }
     }
 
     /** Someone always has to break - if nobody is selected, fall back to [preferred] or the first player. */
