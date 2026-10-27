@@ -71,6 +71,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.occamzchainsaw.core.models.GameState
 import com.occamzchainsaw.core.models.MatchSetup
 import com.occamzchainsaw.straightscorer.R
+import com.occamzchainsaw.straightscorer.ui.common.SwipeToRemove
 import com.occamzchainsaw.straightscorer.dtos.PlayerSetupItem
 import com.occamzchainsaw.straightscorer.ui.game.formatScore
 import com.occamzchainsaw.straightscorer.ui.theme.StraightScorerTheme
@@ -388,47 +389,6 @@ private fun PracticeCard(modifier: Modifier = Modifier) {
                 Text(stringResource(R.string.setup_practice_text), style = MaterialTheme.typography.bodyMedium)
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeToRemove(enabled: Boolean, onRemove: () -> Unit, content: @Composable () -> Unit) {
-    val remove by rememberUpdatedState(onRemove)
-    val dismissState = rememberSwipeToDismissBoxState()
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-            remove()
-            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-        }
-    }
-    val foul = MaterialTheme.outcomeColors.foul
-    SwipeToDismissBox(
-        state = dismissState,
-        gesturesEnabled = enabled,
-        backgroundContent = {
-            val color by animateColorAsState(
-                if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) foul.container.copy(alpha = 0.4f)
-                else foul.container,
-                label = "swipe"
-            )
-            val alignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
-                Alignment.CenterStart
-            } else {
-                Alignment.CenterEnd
-            }
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(color, MaterialTheme.shapes.large)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = alignment
-            ) {
-                OutlinedRoundedSymbol(MaterialSymbols.DELETE, tint = foul.onContainer)
-            }
-        }
-    ) {
-        content()
     }
 }
 

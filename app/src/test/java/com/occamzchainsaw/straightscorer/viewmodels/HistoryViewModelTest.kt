@@ -93,4 +93,20 @@ class HistoryViewModelTest {
 
         assertTrue(matchIds.isEmpty())
     }
+
+    @Test
+    fun filter_narrowsVisibleMatches() = runTest {
+        repository.save(result("match", 2))
+        repository.save(result("practice", 1).copy(targetScore = null))
+        observe()
+
+        viewModel.setFilter(HistoryFilter.Practice)
+        assertEquals(listOf("practice"), viewModel.uiState.value.visibleMatches.map { it.id })
+
+        viewModel.setFilter(HistoryFilter.Matches)
+        assertEquals(listOf("match"), viewModel.uiState.value.visibleMatches.map { it.id })
+
+        viewModel.setFilter(HistoryFilter.All)
+        assertEquals(2, viewModel.uiState.value.visibleMatches.size)
+    }
 }

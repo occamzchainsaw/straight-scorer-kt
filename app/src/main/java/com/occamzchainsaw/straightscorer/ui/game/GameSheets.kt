@@ -54,6 +54,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.occamzchainsaw.core.models.Player
 import com.occamzchainsaw.straightscorer.R
+import com.occamzchainsaw.straightscorer.ui.common.StatsRowData
+import com.occamzchainsaw.straightscorer.ui.common.StatsTable
+import com.occamzchainsaw.straightscorer.ui.common.formatDuration
 import com.occamzchainsaw.straightscorer.ui.theme.OutcomeColor
 import com.occamzchainsaw.straightscorer.ui.theme.outcomeColors
 import com.occamzchainsaw.straightscorer.ui.theme.tabularNumbers
@@ -280,7 +283,18 @@ fun GameResultSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            ResultTable(players = state.players, winnerId = winner?.id)
+            StatsTable(
+                rows = state.players.sortedByDescending { it.score }.map { player ->
+                    StatsRowData(
+                        name = player.name,
+                        score = player.score,
+                        highestBreak = player.highestBreak,
+                        averageBreak = player.averageBreak,
+                        fouls = player.totalFouls,
+                        highlighted = player.id == winner?.id
+                    )
+                }
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -318,88 +332,6 @@ fun GameResultSheet(
 }
 
 @Composable
-private fun ResultTable(players: List<Player>, winnerId: Int?) {
-    val win = MaterialTheme.outcomeColors.win
-    val locale = LocalConfiguration.current.locales[0]
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(Modifier.padding(vertical = 8.dp)) {
-            ResultRow(
-                name = stringResource(R.string.result_player),
-                values = listOf(
-                    stringResource(R.string.result_score),
-                    stringResource(R.string.result_high_break),
-                    stringResource(R.string.result_average),
-                    stringResource(R.string.result_fouls)
-                ),
-                isHeader = true
-            )
-            HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            players.sortedByDescending { it.score }.forEach { player ->
-                val isWinner = player.id == winnerId
-                ResultRow(
-                    name = player.name,
-                    values = listOf(
-                        player.score.toString(),
-                        player.highestBreak.toString(),
-                        String.format(locale, "%.1f", player.averageBreak),
-                        player.totalFouls.toString()
-                    ),
-                    modifier = if (isWinner) {
-                        Modifier
-                            .padding(horizontal = 4.dp)
-                            .background(win.container, MaterialTheme.shapes.medium)
-                    } else Modifier.padding(horizontal = 4.dp),
-                    emphasized = isWinner
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ResultRow(
-    name: String,
-    values: List<String>,
-    modifier: Modifier = Modifier,
-    isHeader: Boolean = false,
-    emphasized: Boolean = false
-) {
-    val style = if (isHeader) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium.tabularNumbers()
-    val color = if (isHeader) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    val weight = if (emphasized) FontWeight.Bold else FontWeight.Normal
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = name,
-            style = style,
-            color = color,
-            fontWeight = weight,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        values.forEach { value ->
-            Text(
-                text = value,
-                style = style,
-                color = color,
-                fontWeight = weight,
-                textAlign = TextAlign.End,
-                modifier = Modifier.width(52.dp)
-            )
-        }
-    }
-}
-
-@Composable
 private fun SheetHeader(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(title, style = MaterialTheme.typography.titleLarge)
@@ -408,11 +340,4 @@ private fun SheetHeader(title: String, subtitle: String?, modifier: Modifier = M
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-}
-
-private fun formatDuration(millis: Long): String {
-    val duration = millis.coerceAtLeast(0).milliseconds
-    val hours = duration.inWholeHours
-    val minutes = duration.inWholeMinutes % 60
-    return if (hours > 0) "$hours h $minutes min" else "${duration.inWholeMinutes.coerceAtLeast(1)} min"
 }

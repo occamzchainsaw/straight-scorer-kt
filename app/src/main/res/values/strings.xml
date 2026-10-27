@@ -120,4 +120,42 @@
     <string name="setup_replace_confirm">Start new</string>
     <string name="action_undo">Undo</string>
     <string name="action_delete">Delete</string>
+
+    <!-- History -->
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_matches">Matches</string>
+    <string name="history_filter_practice">Practice</string>
+    <string name="history_clear">Clear history</string>
+    <string name="history_clear_title">Clear match history?</string>
+    <string name="history_clear_text">All saved matches and practice sessions will be removed.</string>
+    <string name="history_clear_confirm">Clear</string>
+    <plurals name="history_deleted">
+        <item quantity="one">Match deleted</item>
+        <item quantity="other">%1$d matches deleted</item>
+    </plurals>
+    <string name="history_empty_title">No matches yet</string>
+    <string name="history_empty_text">Finished games and practice sessions show up here.</string>
+    <string name="history_empty_filtered">Nothing here yet.</string>
+    <string name="history_race_to">Race to %1$d</string>
+    <string name="history_practice">Practice</string>
+    <string name="history_winner">%1$s won</string>
+    <plurals name="history_players">
+        <item quantity="one">%1$d player</item>
+        <item quantity="other">%1$d players</item>
+    </plurals>
+    <string name="history_practice_points">%1$s points</string>
+    <string name="history_high_break">High break %1$d</string>
+    <plurals name="history_racks">
+        <item quantity="one">%1$d rack</item>
+        <item quantity="other">%1$d racks</item>
+    </plurals>
+    <string name="history_swipe_hint">Swipe a match away to delete it</string>
+
+    <!-- Match detail -->
+    <string name="detail_title">Match</string>
+    <string name="detail_practice_title">Practice session</string>
+    <string name="detail_wins">%1$s wins</string>
+    <string name="detail_players">Players</string>
+    <string name="detail_break_history">Break history</string>
+    <string name="detail_not_found">This match no longer exists.</string>
 </resources>

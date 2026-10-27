@@ -10,6 +10,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination
@@ -23,7 +24,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.occamzchainsaw.straightscorer.R
 import com.occamzchainsaw.straightscorer.ui.game.GameScreen
-import com.occamzchainsaw.straightscorer.ui.screens.HistoryScreen
+import com.occamzchainsaw.straightscorer.ui.history.HistoryScreen
+import com.occamzchainsaw.straightscorer.ui.history.MatchDetailScreen
 import com.occamzchainsaw.straightscorer.ui.screens.RulesScreen
 import com.occamzchainsaw.straightscorer.ui.screens.SettingsScreen
 import com.occamzchainsaw.straightscorer.ui.setup.SetupScreen
@@ -31,6 +33,8 @@ import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
+
+private const val DELETED_MATCH_KEY = "deleted_match"
 
 enum class TopLevelDestination(@StringRes val label: Int, val route: Any, val symbol: String) {
     Play(R.string.nav_play, GameSetup, MaterialSymbols.PLAY_ARROW),
@@ -93,7 +97,26 @@ fun StraightScorerApp() {
                     }
                 )
             }
-            composable<History> { HistoryScreen() }
+            composable<History> { entry ->
+                val pendingDeleteId by entry.savedStateHandle
+                    .getStateFlow<String?>(DELETED_MATCH_KEY, null)
+                    .collectAsState()
+                HistoryScreen(
+                    onOpenMatch = { id -> navController.navigate(MatchDetail(id)) },
+                    pendingDeleteId = pendingDeleteId,
+                    onPendingDeleteHandled = { entry.savedStateHandle[DELETED_MATCH_KEY] = null }
+                )
+            }
+            composable<MatchDetail> {
+                MatchDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onDelete = { id ->
+                        // the history screen deletes it so it can offer undo
+                        navController.previousBackStackEntry?.savedStateHandle?.set(DELETED_MATCH_KEY, id)
+                        navController.popBackStack()
+                    }
+                )
+            }
             composable<Settings> { SettingsScreen() }
             composable<Rules> { RulesScreen() }
         }

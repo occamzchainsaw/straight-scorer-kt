@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,7 +24,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -79,8 +79,6 @@ fun BreakHistory(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState()
 ) {
-    val items = remember(breaks) { historyItems(breaks) }
-
     // always bring the newest entry into view
     LaunchedEffect(breaks.size) {
         listState.animateScrollToItem(0)
@@ -104,16 +102,25 @@ fun BreakHistory(
         modifier = modifier,
         contentPadding = contentPadding
     ) {
-        items(items, key = { it.key }) { item ->
-            when (item) {
-                is HistoryItem.RackDivider -> RackDivider(item.rackNumber, Modifier.animateItem())
-                is HistoryItem.Entry -> {
-                    val rowModifier = Modifier.animateItem()
-                    if (headToHeadLeftPlayerId != null) {
-                        HeadToHeadHistoryRow(item, isLeft = item.entry.playerId == headToHeadLeftPlayerId, modifier = rowModifier)
-                    } else {
-                        SingleLaneHistoryRow(item, showPlayerName = showPlayerNames, modifier = rowModifier)
-                    }
+        breakHistoryItems(breaks, headToHeadLeftPlayerId, showPlayerNames)
+    }
+}
+
+/** The timeline as list items, for screens that put it inside their own LazyColumn. */
+fun LazyListScope.breakHistoryItems(
+    breaks: List<Break>,
+    headToHeadLeftPlayerId: Int?,
+    showPlayerNames: Boolean = true
+) {
+    items(historyItems(breaks), key = { it.key }) { item ->
+        when (item) {
+            is HistoryItem.RackDivider -> RackDivider(item.rackNumber, Modifier.animateItem())
+            is HistoryItem.Entry -> {
+                val rowModifier = Modifier.animateItem()
+                if (headToHeadLeftPlayerId != null) {
+                    HeadToHeadHistoryRow(item, isLeft = item.entry.playerId == headToHeadLeftPlayerId, modifier = rowModifier)
+                } else {
+                    SingleLaneHistoryRow(item, showPlayerName = showPlayerNames, modifier = rowModifier)
                 }
             }
         }
