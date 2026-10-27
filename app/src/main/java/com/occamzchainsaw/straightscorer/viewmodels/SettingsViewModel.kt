@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
 
     val settings: StateFlow<AppSettings> = repository.settings
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
     fun setThemeMode(mode: ThemeMode) = update { setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = update { setDynamicColor(enabled) }

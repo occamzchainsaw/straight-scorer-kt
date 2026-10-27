@@ -27,7 +27,8 @@ import com.occamzchainsaw.straightscorer.ui.game.GameScreen
 import com.occamzchainsaw.straightscorer.ui.history.HistoryScreen
 import com.occamzchainsaw.straightscorer.ui.history.MatchDetailScreen
 import com.occamzchainsaw.straightscorer.ui.rules.RulesScreen
-import com.occamzchainsaw.straightscorer.ui.screens.SettingsScreen
+import com.occamzchainsaw.straightscorer.ui.settings.LicensesScreen
+import com.occamzchainsaw.straightscorer.ui.settings.SettingsScreen
 import com.occamzchainsaw.straightscorer.ui.setup.SetupScreen
 import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
@@ -117,7 +118,8 @@ fun StraightScorerApp() {
                     }
                 )
             }
-            composable<Settings> { SettingsScreen() }
+            composable<Settings> { SettingsScreen(onOpenLicenses = { navController.navigate(Licenses) }) }
+            composable<Licenses> { LicensesScreen(onBack = { navController.popBackStack() }) }
             composable<Rules> { RulesScreen() }
         }
     }

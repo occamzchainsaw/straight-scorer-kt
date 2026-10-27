@@ -8,3 +8,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object GameSetup
 @Serializable data object Game
 @Serializable data class MatchDetail(val matchId: String)
+@Serializable data object Licenses
