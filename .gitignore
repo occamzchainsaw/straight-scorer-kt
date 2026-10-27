@@ -5,6 +5,8 @@
 /build/
 local.properties
 app/screenshots
+# release signing secrets
+keystore.properties
 
 # Log/OS Files
 *.log

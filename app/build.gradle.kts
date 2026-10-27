@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +8,13 @@ plugins {
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.roborazzi)
 }
+
+// Release signing details live in keystore.properties (not committed). See keystore.properties.example.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "com.occamzchainsaw.straightscorer"
@@ -21,8 +30,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // without keystore.properties the release APK is built unsigned
+            if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
