@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Converted from the MAUI app's appiconfg.svg: the 14.1 rerack (14 balls in the rack, one aside). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M49.273,36.855 C50.229,35.146 52.035,34.087 53.994,34.087 C55.952,34.087 57.758,35.146 58.715,36.855 C63.636,45.646 71.276,59.294 75.992,67.718 C76.865,69.278 76.846,71.182 75.943,72.723 C75.039,74.265 73.386,75.212 71.599,75.212 C61.883,75.212 46.149,75.212 36.419,75.212 C34.626,75.212 32.967,74.262 32.06,72.714 C31.153,71.167 31.135,69.255 32.01,67.691 C36.728,59.264 44.357,45.637 49.273,36.855 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.161"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M32.873,69.843a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M41.321,69.843a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M49.77,69.843a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M58.218,69.843a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M66.666,69.843a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M37.097,62.459a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M45.545,62.459a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M53.994,62.459a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M62.442,62.459a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M41.321,55a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M49.77,55a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M58.218,55a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M45.573,47.593a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M54.021,47.593a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M37.097,37.012a4.224,4.224 0,1 0,8.448,0a4.224,4.224 0,1 0,-8.448,0z"
+        android:fillColor="#FFFFFF" />
+</vector>
