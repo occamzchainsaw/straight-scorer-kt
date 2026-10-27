@@ -26,7 +26,7 @@ import com.occamzchainsaw.straightscorer.R
 import com.occamzchainsaw.straightscorer.ui.game.GameScreen
 import com.occamzchainsaw.straightscorer.ui.history.HistoryScreen
 import com.occamzchainsaw.straightscorer.ui.history.MatchDetailScreen
-import com.occamzchainsaw.straightscorer.ui.screens.RulesScreen
+import com.occamzchainsaw.straightscorer.ui.rules.RulesScreen
 import com.occamzchainsaw.straightscorer.ui.screens.SettingsScreen
 import com.occamzchainsaw.straightscorer.ui.setup.SetupScreen
 import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion

@@ -21,6 +21,7 @@ androidxTestCore = "1.7.0"
 materialKolor = "4.1.1"
 roborazzi = "1.77.0"
 reorderable = "3.1.0"
+jetbrainsMarkdown = "0.7.18"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,6 +59,7 @@ roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
 
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
+jetbrains-markdown = { group = "org.jetbrains", name = "markdown", version.ref = "jetbrainsMarkdown" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

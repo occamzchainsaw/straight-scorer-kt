@@ -28,7 +28,7 @@
     - [10.13 Ball Rack Template Foul](#ball-rack-template-foul)
 - [11 Breaking Foul](#breaking-foul)
 - [12 Serious Fouls](#serious-fouls)
-    - [12.1 Three Consecuritve Fouls](#three-consecuritve-fouls)
+    - [12.1 Three Consecutive Fouls](#three-consecutive-fouls)
 - [13 Stalemate](#stalemate)
     - [13.1 Stalemate Details](#stalemate-details)
 

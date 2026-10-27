@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.navigation.suite)
     implementation(libs.material.kolor)
     implementation(libs.reorderable)
+    implementation(libs.jetbrains.markdown)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
