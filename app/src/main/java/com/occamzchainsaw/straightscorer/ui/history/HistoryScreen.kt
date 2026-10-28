@@ -78,6 +78,7 @@ import com.occamzchainsaw.straightscorer.viewmodels.HistoryViewModel
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 @Immutable
 data class HistoryActions(
@@ -318,7 +319,7 @@ fun MatchCard(match: MatchResult, onClick: () -> Unit, modifier: Modifier = Modi
     val locale = currentLocale()
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.cardContainer,
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)

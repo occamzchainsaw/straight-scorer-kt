@@ -54,6 +54,7 @@ import com.occamzchainsaw.straightscorer.viewmodels.AppViewModelProvider
 import com.occamzchainsaw.straightscorer.viewmodels.SettingsViewModel
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 private val ReadingWidth = 680.dp
 
@@ -253,7 +254,7 @@ private fun SettingsSection(title: String, footer: String? = null, content: @Com
         )
         Surface(
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.cardContainer,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(vertical = 4.dp)) { content() }
@@ -358,7 +359,7 @@ private fun SectionDivider() {
 }
 
 @Composable
-private fun sectionItemColors() = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+private fun sectionItemColors() = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.cardContainer)
 
 @Composable
 private fun rememberVersionName(): String {

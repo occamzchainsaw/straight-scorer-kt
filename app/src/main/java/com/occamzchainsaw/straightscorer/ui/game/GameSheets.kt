@@ -65,6 +65,7 @@ import com.occamzchainsaw.straightscorer.viewmodels.OpeningBreakFoul
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import kotlin.time.Duration.Companion.milliseconds
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 /** Quick picks for multi-ball shots and a field for anything else. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -212,7 +213,7 @@ private fun FoulChoice(title: String, text: String, penalty: String, outcome: Ou
                 )
             }
         },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.cardContainer),
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(MaterialTheme.shapes.large)

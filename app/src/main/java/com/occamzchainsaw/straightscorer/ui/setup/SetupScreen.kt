@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,6 +88,10 @@ import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
+
+/** Same comfortable width as the rules and settings screens. */
+private val FormMaxWidth = 680.dp
 
 @Immutable
 data class SetupActions(
@@ -206,94 +211,100 @@ fun SetupContent(
             )
         }
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 4.dp,
-                bottom = padding.calculateBottomPadding() + 96.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            state.activeGame?.let { game ->
-                item(key = "resume") {
-                    ResumeCard(game = game, onResume = actions.onResume, modifier = Modifier.animateItem())
+        // on wide screens keep the form at a readable width instead of stretching it edge to edge
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = FormMaxWidth)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding() + 4.dp,
+                    bottom = padding.calculateBottomPadding() + 96.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                state.activeGame?.let { game ->
+                    item(key = "resume") {
+                        ResumeCard(game = game, onResume = actions.onResume, modifier = Modifier.animateItem())
+                    }
                 }
-            }
-            item(key = "target") {
-                if (state.isPractice) {
-                    PracticeCard(Modifier.animateItem())
-                } else {
-                    TargetScoreCard(state, actions.onTargetScoreChange, Modifier.animateItem())
+                item(key = "target") {
+                    if (state.isPractice) {
+                        PracticeCard(Modifier.animateItem())
+                    } else {
+                        TargetScoreCard(state, actions.onTargetScoreChange, Modifier.animateItem())
+                    }
                 }
-            }
-            item(key = "players-header") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, start = 4.dp, end = 4.dp)
-                        .animateItem(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.setup_players), style = MaterialTheme.typography.titleLarge)
+                item(key = "players-header") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, start = 4.dp, end = 4.dp)
+                            .animateItem(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.setup_players), style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                stringResource(R.string.setup_swipe_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
-                            stringResource(R.string.setup_swipe_hint),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.setup_player_count, state.players.size, MatchSetup.MAX_PLAYERS),
+                            style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        stringResource(R.string.setup_player_count, state.players.size, MatchSetup.MAX_PLAYERS),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
-            }
-            items(state.players, key = { it.id }) { player ->
-                ReorderableItem(reorderState, key = player.id) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 6.dp else 0.dp, label = "drag")
-                    SwipeToRemove(
-                        enabled = state.canRemovePlayer,
-                        onRemove = { actions.onRemovePlayer(player) }
-                    ) {
-                        PlayerCard(
-                            player = player,
-                            errors = playerErrors[player.id] ?: PlayerSetupErrors(),
-                            showErrors = state.showErrors,
-                            isPractice = state.isPractice,
-                            elevation = elevation,
-                            onChange = actions.onPlayerChange,
-                            onSetStarting = { actions.onSetStartingPlayer(player.id) },
-                            dragHandle = {
-                                val description = stringResource(R.string.setup_reorder)
-                                IconButton(
-                                    onClick = {},
-                                    modifier = Modifier
-                                        .draggableHandle()
-                                        .semantics { contentDescription = description }
-                                ) {
-                                    OutlinedRoundedSymbol(MaterialSymbols.DRAG_INDICATOR)
+                items(state.players, key = { it.id }) { player ->
+                    ReorderableItem(reorderState, key = player.id) { isDragging ->
+                        val elevation by animateDpAsState(if (isDragging) 6.dp else 0.dp, label = "drag")
+                        SwipeToRemove(
+                            enabled = state.canRemovePlayer,
+                            onRemove = { actions.onRemovePlayer(player) }
+                        ) {
+                            PlayerCard(
+                                player = player,
+                                errors = playerErrors[player.id] ?: PlayerSetupErrors(),
+                                showErrors = state.showErrors,
+                                isPractice = state.isPractice,
+                                elevation = elevation,
+                                onChange = actions.onPlayerChange,
+                                onSetStarting = { actions.onSetStartingPlayer(player.id) },
+                                dragHandle = {
+                                    val description = stringResource(R.string.setup_reorder)
+                                    IconButton(
+                                        onClick = {},
+                                        modifier = Modifier
+                                            .draggableHandle()
+                                            .semantics { contentDescription = description }
+                                    ) {
+                                        OutlinedRoundedSymbol(MaterialSymbols.DRAG_INDICATOR)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
-            }
-            item(key = "add-player") {
-                OutlinedButton(
-                    onClick = actions.onAddPlayer,
-                    enabled = state.canAddPlayer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .animateItem()
-                ) {
-                    OutlinedRoundedSymbol(MaterialSymbols.PERSON_ADD, size = 20.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.setup_add_player))
+                item(key = "add-player") {
+                    OutlinedButton(
+                        onClick = actions.onAddPlayer,
+                        enabled = state.canAddPlayer,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .animateItem()
+                    ) {
+                        OutlinedRoundedSymbol(MaterialSymbols.PERSON_ADD, size = 20.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.setup_add_player))
+                    }
                 }
             }
         }
@@ -353,7 +364,7 @@ private fun TargetScoreCard(state: SetupUiState, onChange: (String) -> Unit, mod
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = MaterialTheme.colorScheme.cardContainer
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -367,7 +378,7 @@ private fun TargetScoreCard(state: SetupUiState, onChange: (String) -> Unit, mod
                 supportingText = error?.let { { Text(it) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.widthIn(max = 200.dp)
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -406,7 +417,7 @@ private fun PlayerCard(
     val nameError = errors.name.takeIf { showErrors || player.name.isNotEmpty() }
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.cardContainer,
         shadowElevation = elevation,
         modifier = Modifier.fillMaxWidth()
     ) {

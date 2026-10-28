@@ -23,6 +23,7 @@ import com.occamzchainsaw.straightscorer.R
 import com.occamzchainsaw.straightscorer.ui.game.formatScore
 import com.occamzchainsaw.straightscorer.ui.theme.outcomeColors
 import com.occamzchainsaw.straightscorer.ui.theme.tabularNumbers
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 @Immutable
 data class StatsRowData(
@@ -42,7 +43,7 @@ fun StatsTable(rows: List<StatsRowData>, modifier: Modifier = Modifier) {
     val locale = currentLocale()
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.cardContainer,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(vertical = 8.dp)) {

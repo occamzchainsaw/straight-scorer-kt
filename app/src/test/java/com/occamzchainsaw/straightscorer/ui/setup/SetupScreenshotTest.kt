@@ -63,4 +63,8 @@ class SetupScreenshotTest {
         ),
         name = "errors"
     )
+
+    @Test
+    @Config(qualifiers = RobolectricDeviceQualifiers.MediumTablet)
+    fun tablet() = render(twoPlayers, name = "tablet")
 }

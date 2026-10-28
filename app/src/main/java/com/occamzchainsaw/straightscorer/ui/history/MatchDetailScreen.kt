@@ -50,6 +50,7 @@ import com.occamzchainsaw.straightscorer.viewmodels.MatchDetailViewModel
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 @Composable
 fun MatchDetailScreen(
@@ -156,7 +157,7 @@ private fun MatchHeader(match: MatchResult) {
 
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = scheme.surfaceContainerLow,
+        color = scheme.cardContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

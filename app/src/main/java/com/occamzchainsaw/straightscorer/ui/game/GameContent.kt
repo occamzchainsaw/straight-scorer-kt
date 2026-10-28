@@ -48,6 +48,7 @@ import com.occamzchainsaw.straightscorer.viewmodels.OpeningBreakFoul
 import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import dev.vicart.compose.material.symbols.OutlinedRoundedSymbol
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 @Immutable
 data class GameActions(
@@ -203,7 +204,7 @@ private fun WideGameLayout(state: GameUiState, actions: GameActions) {
         }
         Surface(
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.cardContainer,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()

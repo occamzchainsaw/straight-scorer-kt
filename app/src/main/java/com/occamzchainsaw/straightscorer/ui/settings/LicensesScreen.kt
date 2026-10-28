@@ -40,6 +40,7 @@ import dev.vicart.compose.material.symbols.FilledRoundedSymbol
 import dev.vicart.compose.material.symbols.MaterialSymbols
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 private const val APACHE_2 = "Apache License 2.0"
 private const val APACHE_2_URL = "https://www.apache.org/licenses/LICENSE-2.0"
@@ -111,7 +112,7 @@ private fun LicenseCard(entry: LicenseEntry, modifier: Modifier = Modifier) {
 
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.cardContainer,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 8.dp)) {

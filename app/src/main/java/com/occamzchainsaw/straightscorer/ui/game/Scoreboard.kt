@@ -62,6 +62,7 @@ import com.occamzchainsaw.straightscorer.R
 import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion
 import com.occamzchainsaw.straightscorer.ui.theme.outcomeColors
 import com.occamzchainsaw.straightscorer.ui.theme.tabularNumbers
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 /** Two cards side by side, mirrored: the left player reads from the left edge, the right one from the right edge. */
 @Composable
@@ -240,7 +241,7 @@ fun PlayerListScoreboard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = MaterialTheme.colorScheme.cardContainer
     ) {
         LazyColumn(
             state = listState,

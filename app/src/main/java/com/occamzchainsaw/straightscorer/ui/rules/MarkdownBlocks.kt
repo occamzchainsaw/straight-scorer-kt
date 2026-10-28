@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.occamzchainsaw.straightscorer.data.rules.DocBlock
 import com.occamzchainsaw.straightscorer.data.rules.RichText
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 
 /** Search hits for one segment; [isCurrent] marks the one the user stepped to. */
 @Immutable
@@ -167,7 +168,7 @@ private fun TableView(table: DocBlock.Table, context: BlockRenderContext, modifi
     val scheme = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = scheme.surfaceContainerLow,
+        color = scheme.cardContainer,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(Modifier.horizontalScroll(rememberScrollState())) {
