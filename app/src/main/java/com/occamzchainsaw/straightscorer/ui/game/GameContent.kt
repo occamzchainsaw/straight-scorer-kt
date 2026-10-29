@@ -286,8 +286,8 @@ private fun InfoPill(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            OutlinedRoundedSymbol(symbol, size = 16.dp, tint = content)
-            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            OutlinedRoundedSymbol(symbol, size = 18.dp, tint = content)
+            Text(text, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
         }
     }
 }

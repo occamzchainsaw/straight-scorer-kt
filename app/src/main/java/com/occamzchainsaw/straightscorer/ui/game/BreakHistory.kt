@@ -39,7 +39,7 @@ import com.occamzchainsaw.straightscorer.ui.theme.OutcomeColor
 import com.occamzchainsaw.straightscorer.ui.theme.outcomeColors
 import com.occamzchainsaw.straightscorer.ui.theme.tabularNumbers
 
-private val RowHeight = 52.dp
+private val RowHeight = 48.dp
 private val RailWidth = 28.dp
 private val NodeRadius = 6.dp
 private val LineWidth = 2.dp
@@ -223,12 +223,12 @@ private fun BreakPill(entry: Break, outcome: OutcomeColor) {
         ) {
             Text(
                 text = formatPoints(entry.netPoints),
-                style = MaterialTheme.typography.titleSmall.tabularNumbers(),
+                style = MaterialTheme.typography.titleMedium.tabularNumbers(),
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = stringResource(entry.endAction.label),
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.titleMedium
             )
         }
     }

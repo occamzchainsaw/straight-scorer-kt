@@ -1,32 +1,12 @@
 package com.occamzchainsaw.straightscorer.ui.game
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,15 +19,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -59,10 +45,28 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.occamzchainsaw.core.models.Player
 import com.occamzchainsaw.straightscorer.R
+import com.occamzchainsaw.straightscorer.ui.common.currentLocale
+import com.occamzchainsaw.straightscorer.ui.common.formatAverage
 import com.occamzchainsaw.straightscorer.ui.theme.ScorerMotion
+import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
 import com.occamzchainsaw.straightscorer.ui.theme.outcomeColors
 import com.occamzchainsaw.straightscorer.ui.theme.tabularNumbers
-import com.occamzchainsaw.straightscorer.ui.theme.cardContainer
+
+enum class CardFace(val angle: Float) {
+    Front(0f) {
+        override val next: CardFace
+            get() = Back
+    },
+    Back(180f) {
+        override val next: CardFace
+            get() = Front
+    };
+
+    abstract val next: CardFace
+}
+
+/** Which way a card turns over: tall cards flip sideways, wide short ones top-to-bottom. */
+enum class FlipAxis { Vertical, Horizontal }
 
 /** Two cards side by side, mirrored: the left player reads from the left edge, the right one from the right edge. */
 @Composable
@@ -80,16 +84,104 @@ fun HeadToHeadScoreboard(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         players.take(2).forEachIndexed { index, player ->
-            HeadToHeadPlayerCard(
-                player = player,
-                isAtTable = winnerId == null && index == atTableIndex,
-                isWinner = player.id == winnerId,
-                targetScore = targetScore,
-                mirrored = index == 1,
+            var face by remember {
+                mutableStateOf(CardFace.Front)
+            }
+            val isAtTable = winnerId == null && index == atTableIndex
+            val mirrored = index == 1
+            FlipCard(
+                cardFace = face,
+                onClick = {
+                    face = it.next
+                },
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight()
+                    .fillMaxHeight(),
+                back = {
+                    PlayerStatsCard(
+                        player = player,
+                        isAtTable = isAtTable,
+                        mirrored = mirrored,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                },
+                front = {
+                    HeadToHeadPlayerCard(
+                        player = player,
+                        isAtTable = isAtTable,
+                        isWinner = player.id == winnerId,
+                        targetScore = targetScore,
+                        mirrored = mirrored,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             )
+        }
+    }
+}
+
+@Composable
+private fun FlipCard(
+    cardFace: CardFace,
+    onClick: (CardFace) -> Unit,
+    modifier: Modifier = Modifier,
+    axis: FlipAxis = FlipAxis.Vertical,
+    shape: Shape = MaterialTheme.shapes.large,
+    back: @Composable () -> Unit,
+    front: @Composable () -> Unit
+) {
+    val rotation = animateFloatAsState(
+        targetValue = cardFace.angle,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = EaseInOut,
+        )
+    )
+    val showingFront = rotation.value <= 90f
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                when (axis) {
+                    FlipAxis.Vertical -> rotationY = rotation.value
+                    FlipAxis.Horizontal -> rotationX = rotation.value
+                }
+                cameraDistance = 12f * density
+            }
+            .clip(shape)
+            .clickable { onClick(cardFace) }
+    ) {
+        Box(
+            Modifier
+                .graphicsLayer {
+                    alpha = if (showingFront) 1f else 0f
+                }
+                .then(
+                    if (showingFront)
+                        Modifier
+                    else
+                        Modifier.clearAndSetSemantics {}
+                )
+        ) {
+            front()
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    when (axis) {
+                        FlipAxis.Vertical -> rotationY = 180f
+                        FlipAxis.Horizontal -> rotationX = 180f
+                    }
+                    alpha = if (showingFront) 0f else 1f
+                }
+                .then(
+                    if (showingFront)
+                        Modifier.clearAndSetSemantics {}
+                    else
+                        Modifier
+                )
+        ) {
+            back()
         }
     }
 }
@@ -120,7 +212,7 @@ private fun HeadToHeadPlayerCard(
                 AtTableDot(visible = isAtTable, color = colors.accent)
                 Text(
                     text = player.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -149,6 +241,83 @@ private fun HeadToHeadPlayerCard(
                 FoulDots(count = player.consecutiveFouls)
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerStatsCard(
+    player: Player,
+    isAtTable: Boolean,
+    mirrored: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = playerCardColors(isAtTable, false)
+    val locale = currentLocale()
+
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        color = colors.container,
+        contentColor = colors.content
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            MirroredRow(mirrored = mirrored) {
+                AtTableDot(visible = isAtTable, color = colors.accent)
+                Text(
+                    text = player.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatRow(
+                    label = stringResource(R.string.stats_high_break),
+                    value = player.highestBreak.toString()
+                )
+                StatRow(
+                    label = stringResource(R.string.stats_avg_break),
+                    value = formatAverage(player.averageBreak, locale)
+                )
+                StatRow(
+                    label = stringResource(R.string.stats_fouls),
+                    value = player.totalFouls.toString()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatRow(
+    label: String,
+    value: String
+) {
+    Row {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.tabularNumbers(),
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -238,25 +407,39 @@ fun PlayerListScoreboard(
     val listState = rememberLazyListState()
     LaunchedEffect(atTableIndex) { listState.animateScrollToItem(atTableIndex) }
 
-    Surface(
+    LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.cardContainer
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.padding(6.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            itemsIndexed(players, key = { _, player -> player.id }) { index, player ->
-                PlayerListRow(
-                    player = player,
-                    turnNumber = index + 1,
-                    isAtTable = winnerId == null && index == atTableIndex,
-                    isWinner = player.id == winnerId,
-                    targetScore = targetScore
-                )
-            }
+        itemsIndexed(players, key = { _, player -> player.id }) { index, player ->
+            var face by remember { mutableStateOf(CardFace.Front) }
+            val isAtTable = winnerId == null && index == atTableIndex
+            val isWinner = player.id == winnerId
+            FlipCard(
+                cardFace = face,
+                onClick = { face = it.next },
+                axis = FlipAxis.Horizontal,
+                modifier = Modifier.fillMaxWidth(),
+                back = {
+                    PlayerListStatsRow(
+                        player = player,
+                        turnNumber = index + 1,
+                        isAtTable = isAtTable,
+                        isWinner = isWinner,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                },
+                front = {
+                    PlayerListRow(
+                        player = player,
+                        turnNumber = index + 1,
+                        isAtTable = isAtTable,
+                        isWinner = isWinner,
+                        targetScore = targetScore
+                    )
+                }
+            )
         }
     }
 }
@@ -267,37 +450,25 @@ private fun PlayerListRow(
     turnNumber: Int,
     isAtTable: Boolean,
     isWinner: Boolean,
-    targetScore: Int
+    targetScore: Int,
+    modifier: Modifier = Modifier
 ) {
-    val colors = playerCardColors(isAtTable, isWinner, idle = Color.Transparent)
+    val colors = playerCardColors(isAtTable, isWinner, idle = MaterialTheme.colorScheme.cardContainer)
 
     Surface(
-        shape = MaterialTheme.shapes.medium,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
         color = colors.container,
         contentColor = colors.content
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(
-                        if (isAtTable || isWinner) colors.accent else MaterialTheme.colorScheme.surfaceContainerHighest,
-                        CircleShape
-                    )
-            ) {
-                Text(
-                    text = turnNumber.toString(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isAtTable || isWinner) MaterialTheme.colorScheme.surface else colors.content
-                )
-            }
+            TurnBadge(turnNumber, highlighted = isAtTable || isWinner, colors = colors)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = player.name,
@@ -329,6 +500,79 @@ private fun PlayerListRow(
                 modifier = Modifier.width(72.dp)
             )
         }
+    }
+}
+
+/** Back of a list row: who it is, then highest break, average and fouls side by side. */
+@Composable
+private fun PlayerListStatsRow(
+    player: Player,
+    turnNumber: Int,
+    isAtTable: Boolean,
+    isWinner: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = playerCardColors(isAtTable, isWinner, idle = MaterialTheme.colorScheme.cardContainer)
+    val locale = currentLocale()
+
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        color = colors.container,
+        contentColor = colors.content
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            TurnBadge(turnNumber, highlighted = isAtTable || isWinner, colors = colors)
+            Text(
+                text = player.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            ListStat(stringResource(R.string.stats_high_break), player.highestBreak.toString())
+            ListStat(stringResource(R.string.stats_avg_break), formatAverage(player.averageBreak, locale))
+            ListStat(stringResource(R.string.stats_fouls), player.totalFouls.toString())
+        }
+    }
+}
+
+@Composable
+private fun ListStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.tabularNumbers(),
+            fontWeight = FontWeight.Bold
+        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    }
+}
+
+/** Turn-order number in a circle; filled with the accent for the player at the table (or the winner). */
+@Composable
+private fun TurnBadge(turnNumber: Int, highlighted: Boolean, colors: PlayerCardColors) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(28.dp)
+            .background(
+                if (highlighted) colors.accent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                CircleShape
+            )
+    ) {
+        Text(
+            text = turnNumber.toString(),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (highlighted) MaterialTheme.colorScheme.surface else colors.content
+        )
     }
 }
 
